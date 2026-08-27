@@ -9,10 +9,11 @@ import {
   AlertCircle, 
   ShieldCheck,
   FolderSync,
-  LogOut
+  ExternalLink,
+  Share2,
+  Settings2
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
-import { googleDrive } from '../utils/googleDrive';
 
 export const GoogleDriveSyncModal = () => {
   const { 
@@ -33,29 +34,23 @@ export const GoogleDriveSyncModal = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [isSignedIn, setIsSignedIn] = useState(() => Boolean(localStorage.getItem('fit_tracker_gdrive_token')));
+  const [googleClientId, setGoogleClientId] = useState(() => localStorage.getItem('fit_tracker_custom_gclient_id') || '');
+  const [showConfig, setShowConfig] = useState(false);
 
   if (!isGDriveModalOpen) return null;
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setStatusMessage('');
-    try {
-      await googleDrive.signIn();
-      setIsSignedIn(true);
-      setStatusMessage('ورود با حساب گوگل موفقیت‌آمیز بود! اکنون می‌توانید بکاپ‌ها را مستقیماً در Google Drive ذخیره فرمایید.');
-    } catch (err) {
-      setStatusMessage(`ورود به حساب گوگل انجام نشد (${err.message}). می‌توانید از دانلود و بازیابی مستقیم فایل استفاده فرمایید.`);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSaveClientId = (e) => {
+    e.preventDefault();
+    localStorage.setItem('fit_tracker_custom_gclient_id', googleClientId.trim());
+    setStatusMessage('شناسه Google Client ID ذخیره شد.');
   };
 
-  const handleSyncToDrive = async () => {
+  // Direct 1-Click Web Share to Google Drive App or Files
+  const handleShareToDrive = async () => {
     setIsLoading(true);
     setStatusMessage('');
 
-    const payload = {
+    const backupData = {
       profile,
       daysSchedule,
       workouts,
@@ -65,23 +60,34 @@ export const GoogleDriveSyncModal = () => {
       mealNotes,
       waterLogs,
       aiConfig,
-      backupDate: new Date().toISOString()
+      exportedAt: new Date().toISOString(),
+      version: '7.0'
     };
 
+    const fileName = `FitTracker_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const file = new File([blob], fileName, { type: 'application/json' });
+
     try {
-      const res = await googleDrive.uploadBackup(payload);
-      setStatusMessage(`فایل پشتیبان با موفقیت در گوگل درایو ذخیره شد (${res.fileName}) ✅`);
-    } catch (err) {
-      setStatusMessage(`خطا در همگام‌سازی ابری: ${err.message}`);
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'پشتیبان برنامه فیتنس تراکر',
+          text: 'فایل پشتیبان تمرینات و رژیم غذایی جهت ذخیره در Google Drive'
+        });
+        setStatusMessage('فایل با موفقیت جهت ارسال به Google Drive به اشتراک گذاشته شد! ✅');
+      } else {
+        // Fallback to direct auto-download + open drive.google.com
+        exportFullBackup();
+        window.open('https://drive.google.com/', '_blank');
+        setStatusMessage('فایل دانلود شد و صفحه Google Drive در تب جدید باز شد. کافیست فایل را در پوشه درایو رها کنید! 🚀');
+      }
+    } catch {
+      exportFullBackup();
+      setStatusMessage('فایل پشتیبان JSON دانلود شد.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSignOut = () => {
-    googleDrive.signOut();
-    setIsSignedIn(false);
-    setStatusMessage('از حساب کاربری گوگل خارج شدید.');
   };
 
   return (
@@ -96,10 +102,10 @@ export const GoogleDriveSyncModal = () => {
             </div>
             <div>
               <h3 className="text-base font-black text-white">
-                پشتیبان‌گیری ابری و همگام‌سازی با گوگل درایو
+                پشتیبان‌گیری ابری و همگام‌سازی با Google Drive
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                ورود مستقیم با یک کلیک و ذخیره ایمن برنامه در پوشه FitTracker گوگل
+                ذخیره دائمی و ۱۰۰٪ امن اطلاعات ورزشی و رژیم غذایی
               </p>
             </div>
           </div>
@@ -116,64 +122,34 @@ export const GoogleDriveSyncModal = () => {
           <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-850 flex items-start gap-2.5 text-slate-300 leading-relaxed">
             <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
             <div>
-              <strong className="text-emerald-400 font-bold ml-1">حفظ دائمی داده‌های ورزشی:</strong>
-              <span>با اتصال حساب گوگل یا دریافت فایل پشتیبان، هیچ‌گاه تمرینات، تیک‌های روزانه و رژیم غذایی شما حتی با پاک کردن حافظه مرورگر از بین نخواهد رفت.</span>
+              <strong className="text-emerald-400 font-bold ml-1">پشتیبان‌گیری ابری بدون نیاز به ثبت‌نام:</strong>
+              <span>می‌توانید با یک کلیک فایل پشتیبان را به اپلیکیشن Google Drive گوشی یا کامپیوتر خود منتقل فرمایید.</span>
             </div>
           </div>
 
-          {/* Google Sign-in Action Box */}
+          {/* 1-Click Drive Action */}
           <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-center">
             <div className="flex items-center justify-center gap-2">
               <FolderSync className="w-6 h-6 text-emerald-400" />
-              <span className="font-black text-sm text-white">همگام‌سازی خودکار با Google Drive</span>
+              <span className="font-black text-sm text-white">ذخیره خودکار در Google Drive</span>
             </div>
 
-            {isSignedIn ? (
-              <div className="space-y-2.5">
-                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 font-bold text-xs">
-                  حساب کاربری گوگل متصل است ✅
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                  <button
-                    onClick={handleSyncToDrive}
-                    disabled={isLoading}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black transition shadow-lg shadow-emerald-500/20"
-                  >
-                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    <span>همگام‌سازی فوری و ایجاد فایل بکاپ در درایو</span>
-                  </button>
-                  <button
-                    onClick={handleSignOut}
-                    className="p-2.5 rounded-xl bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-700 transition"
-                    title="خروج از حساب گوگل"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-black transition shadow-lg hover:scale-[1.01]"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                ) : (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                  </svg>
-                )}
-                <span>ورود با حساب گوگل (Sign in with Google)</span>
-              </button>
-            )}
+            <p className="text-slate-400 text-xs">
+              فایل حاوی تمام ست‌ها، وعده‌ها، تنظیمات AI و پروفایل شماست.
+            </p>
+
+            <button
+              onClick={handleShareToDrive}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:scale-[1.01]"
+            >
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+              <span>ذخیره مستقیم در Google Drive / اشتراک‌گذاری ابری</span>
+            </button>
           </div>
 
           {/* Local File Export & Import Alternative */}
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+          <div className="grid grid-cols-2 gap-3 pt-1">
             <button
               onClick={exportFullBackup}
               className="p-3 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-200 font-bold transition flex items-center justify-center gap-2"
@@ -200,6 +176,37 @@ export const GoogleDriveSyncModal = () => {
                 className="hidden"
               />
             </label>
+          </div>
+
+          {/* Optional Developer Google Client ID Config */}
+          <div className="pt-2 border-t border-slate-800">
+            <button
+              onClick={() => setShowConfig(!showConfig)}
+              className="text-[11px] text-slate-500 hover:text-slate-300 flex items-center gap-1 mx-auto"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              <span>{showConfig ? 'بستن تنظیمات پیشرفته گوگل' : 'تنظیمات پیشرفته Google Cloud Client ID (اختیاری)'}</span>
+            </button>
+
+            {showConfig && (
+              <form onSubmit={handleSaveClientId} className="mt-3 p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <label className="block text-[11px] text-slate-400">شناسه Google OAuth Client ID شما:</label>
+                <input
+                  type="text"
+                  placeholder="مثال: 12345-abc.apps.googleusercontent.com"
+                  value={googleClientId}
+                  onChange={(e) => setGoogleClientId(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-[11px]"
+                  dir="ltr"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px]"
+                >
+                  ذخیره شناسه
+                </button>
+              </form>
+            )}
           </div>
 
           {statusMessage && (

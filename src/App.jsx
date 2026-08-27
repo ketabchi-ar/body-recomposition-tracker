@@ -42,14 +42,22 @@ export function App() {
 }
 
 const AppContent = () => {
-  const { isAIPlanGenOpen, setIsAIPlanGenOpen, isHealthSyncOpen, setIsHealthSyncOpen } = useTracker();
+  const { isAIPlanGenOpen, setIsAIPlanGenOpen, isHealthSyncOpen, setIsHealthSyncOpen, toastMessage } = useTracker();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col" dir="rtl">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col relative" dir="rtl">
       <Header />
       <div className="flex-1">
         <MainContent />
       </div>
+
+      {/* Floating Celebration Toast */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black text-xs sm:text-sm shadow-2xl shadow-emerald-500/30 animate-bounce flex items-center gap-2">
+          <span>✨</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
       
       {/* Modals & Overlays */}
       <VideoModal />
