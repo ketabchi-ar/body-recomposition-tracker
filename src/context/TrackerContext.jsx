@@ -5,7 +5,6 @@ import { daysSchedule as initialDays, workoutsData as initialWorkouts, dietMeals
 import { exercisesBank } from '../data/exercisesBank';
 import { foodsBank } from '../data/foodsBank';
 import { getLocalExerciseSubstitutes, getLocalFoodSubstitutes } from '../utils/aiService';
-import { googleDrive } from '../utils/googleDrive';
 import { parsePersianDigits } from '../utils/jalali';
 
 const TrackerContext = createContext();
@@ -115,7 +114,7 @@ export const TrackerProvider = ({ children }) => {
     }
   });
 
-  // Multi-Provider AI Config State (Single Source of Truth)
+  // Multi-Provider AI Config State
   const [aiConfig, setAiConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('fit_tracker_ai_config');
@@ -188,7 +187,7 @@ export const TrackerProvider = ({ children }) => {
     isSessionRunning: false
   });
 
-  // Active Main Tab: 'workout' | 'diet' | 'schedule' | 'builder' | 'ergo' | 'stats'
+  // Active Main Tab
   const [activeTab, setActiveTab] = useState('workout');
 
   // Persistence Effects
@@ -250,7 +249,9 @@ export const TrackerProvider = ({ children }) => {
         }));
       }, 1000);
     } else if (restTimer.isRunning && restTimer.timeLeft <= 0) {
-      sounds.playTimerAlert();
+      try {
+        sounds.playTimerAlert();
+      } catch {}
       setTimeout(() => {
         setRestTimer(prev => ({ ...prev, isRunning: false }));
       }, 1500);
@@ -258,258 +259,7 @@ export const TrackerProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [restTimer.isRunning, restTimer.timeLeft]);
 
-  // Focus Mode Stopwatch
-  useEffect(() => {
-    let interval = null;
-    if (focusMode.isOpen && focusMode.isSessionRunning) {
-      interval = setInterval(() => {
-        setFocusMode(prev => ({
-          ...prev,
-          sessionElapsedSeconds: prev.sessionElapsedSeconds + 1
-        }));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [focusMode.isOpen, focusMode.isSessionRunning]);
-
-  // Actions
-  const toggleSetComplete = (exerciseId, setIndex, currentReps = '', currentWeight = '', currentSeconds = '') => {
-    try {
-      sounds.playBeep(700, 'sine', 0.08);
-    } catch {}
-
-    setWorkoutLogs(prev => {
-      const dayLogs = prev[activeDateKey] || {};
-      const key = `${exerciseId}_${setIndex}`;
-      const current = dayLogs[key] || { done: false, weight: currentWeight, reps: currentReps, seconds: currentSeconds };
-      const nextDone = !current.done;
-
-      const updated = {
-        ...prev,
-        [activeDateKey]: {
-          ...dayLogs,
-          [key]: {
-            ...current,
-            done: nextDone,
-            weight: current.weight || currentWeight,
-            reps: current.reps || currentReps,
-            seconds: current.seconds || currentSeconds
-          }
-        }
-      };
-
-      if (nextDone) {
-        checkIfAllDoneAndCelebrate(updated);
-        if (focusMode.isOpen) {
-          startRestTimer(60, 'استراحت بین ست‌ها');
-        }
-      }
-
-      return updated;
-    });
-  };
-
-  const updateSetValues = (exerciseId, setIndex, field, value) => {
-    const cleanValue = parsePersianDigits(value);
-    setWorkoutLogs(prev => {
-      const dayLogs = prev[activeDateKey] || {};
-      const key = `${exerciseId}_${setIndex}`;
-      const current = dayLogs[key] || { done: false, weight: '', reps: '', seconds: '' };
-      return {
-        ...prev,
-        [activeDateKey]: {
-          ...dayLogs,
-          [key]: {
-            ...current,
-            [field]: cleanValue
-          }
-        }
-      };
-    });
-  };
-
-  const copyFromPreviousSet = (exerciseId, setIndex) => {
-    if (setIndex <= 0) return;
-    const dayLogs = workoutLogs[activeDateKey] || {};
-    const prevKey = `${exerciseId}_${setIndex - 1}`;
-    const prevSet = dayLogs[prevKey];
-    if (!prevSet) return;
-
-    try {
-      sounds.playBeep(800, 'sine', 0.05);
-    } catch {}
-
-    setWorkoutLogs(prev => {
-      const currentLogs = prev[activeDateKey] || {};
-      const currentKey = `${exerciseId}_${setIndex}`;
-      const current = currentLogs[currentKey] || { done: false, weight: '', reps: '', seconds: '' };
-      return {
-        ...prev,
-        [activeDateKey]: {
-          ...currentLogs,
-          [currentKey]: {
-            ...current,
-            weight: prevSet.weight || current.weight,
-            reps: prevSet.reps || current.reps,
-            seconds: prevSet.seconds || current.seconds
-          }
-        }
-      };
-    });
-  };
-
-  // In-place Exercise Management
-  const addExerciseToDay = (dayId, exercise) => {
-    setWorkouts(prev => {
-      const targetDay = daysSchedule.find(d => d.id === dayId);
-      if (!targetDay) return prev;
-      const workoutId = targetDay.workoutId;
-      const currentWorkout = prev[workoutId] || { id: workoutId, title: targetDay.title, exercises: [] };
-      const newEx = {
-        ...exercise,
-        id: `custom_${Date.now()}_${exercise.id || 'ex'}`,
-        setsCount: exercise.defaultSets || 3,
-        setsReps: exercise.setsReps || `${exercise.defaultSets || 3} × 10`,
-        suggestedReps: exercise.suggestedReps || [10, 10, 10]
-      };
-      return {
-        ...prev,
-        [workoutId]: {
-          ...currentWorkout,
-          exercises: [...(currentWorkout.exercises || []), newEx]
-        }
-      };
-    });
-    triggerCelebration('حرکت با موفقیت به برنامه اضافه شد! 🏋️');
-  };
-
-  const removeExerciseFromDay = (dayId, exerciseId) => {
-    if (!window.confirm('آیا از حذف این حرکت از برنامه مطمئن هستید؟')) return;
-    setWorkouts(prev => {
-      const targetDay = daysSchedule.find(d => d.id === dayId);
-      if (!targetDay) return prev;
-      const workoutId = targetDay.workoutId;
-      const currentWorkout = prev[workoutId];
-      if (!currentWorkout) return prev;
-      return {
-        ...prev,
-        [workoutId]: {
-          ...currentWorkout,
-          exercises: currentWorkout.exercises.filter(e => e.id !== exerciseId)
-        }
-      };
-    });
-  };
-
-  const updateExerciseSetsCount = (dayId, exerciseId, delta) => {
-    setWorkouts(prev => {
-      const targetDay = daysSchedule.find(d => d.id === dayId);
-      if (!targetDay) return prev;
-      const workoutId = targetDay.workoutId;
-      const currentWorkout = prev[workoutId];
-      if (!currentWorkout) return prev;
-      const updated = currentWorkout.exercises.map(ex => {
-        if (ex.id === exerciseId) {
-          const newCount = Math.max(1, Math.min(10, (ex.setsCount || 3) + delta));
-          return {
-            ...ex,
-            setsCount: newCount,
-            setsReps: `${newCount} ست`
-          };
-        }
-        return ex;
-      });
-      return {
-        ...prev,
-        [workoutId]: {
-          ...currentWorkout,
-          exercises: updated
-        }
-      };
-    });
-  };
-
-  // In-place Meal Management
-  const addMeal = (newMeal) => {
-    setDietMeals(prev => [...prev, { ...newMeal, id: `meal_${Date.now()}` }]);
-    triggerCelebration('وعده غذایی جدید اضافه شد! 🥗');
-  };
-
-  const removeMeal = (mealId) => {
-    if (!window.confirm('آیا از حذف این وعده غذایی مطمئن هستید؟')) return;
-    setDietMeals(prev => prev.filter(m => m.id !== mealId));
-  };
-
-  const updateMeal = (mealId, field, value) => {
-    setDietMeals(prev => prev.map(m => {
-      if (m.id === mealId) {
-        return { ...m, [field]: value };
-      }
-      return m;
-    }));
-  };
-
-  const toggleMealComplete = (mealId) => {
-    try {
-      sounds.playBeep(850, 'triangle', 0.1);
-    } catch {}
-
-    setMealLogs(prev => {
-      const dayLogs = prev[activeDateKey] || {};
-      const next = !dayLogs[mealId];
-      const updated = {
-        ...prev,
-        [activeDateKey]: {
-          ...dayLogs,
-          [mealId]: next
-        }
-      };
-
-      if (next) {
-        const completedCount = Object.values(updated[activeDateKey] || {}).filter(Boolean).length;
-        if (completedCount === dietMeals.length) {
-          triggerCelebration("تمام وعده‌ها و مکمل‌های روزانه مصرف شدند! 🥗💪");
-        }
-      }
-      return updated;
-    });
-  };
-
-  const updateMealNote = (mealId, note) => {
-    setMealNotes(prev => ({
-      ...prev,
-      [activeDateKey]: {
-        ...(prev[activeDateKey] || {}),
-        [mealId]: note
-      }
-    }));
-  };
-
-  const addWater = (amountMl = 250) => {
-    try {
-      sounds.playBeep(900, 'sine', 0.12);
-    } catch {}
-
-    setWaterLogs(prev => {
-      const current = prev[activeDateKey] || 0;
-      const next = Math.min(5000, current + amountMl);
-      if (current < 2500 && next >= 2500) {
-        triggerCelebration("هدف ۲.۵ لیتر آب روزانه تکمیل شد 💧");
-      }
-      return {
-        ...prev,
-        [activeDateKey]: next
-      };
-    });
-  };
-
-  const resetWater = () => {
-    setWaterLogs(prev => ({
-      ...prev,
-      [activeDateKey]: 0
-    }));
-  };
-
+  // Safe Celebration Trigger (never throws)
   const triggerCelebration = (msg) => {
     try {
       sounds.playCompletionChime();
@@ -517,41 +267,13 @@ export const TrackerProvider = ({ children }) => {
     try {
       if (typeof confetti === 'function') {
         confetti({
-          particleCount: 60,
+          particleCount: 50,
           spread: 60,
           origin: { y: 0.6 }
         });
       }
     } catch (e) {
-      console.warn('Confetti error safely caught:', e);
-    }
-  };
-
-  const checkIfAllDoneAndCelebrate = (logs) => {
-    try {
-      const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
-      if (!selectedDay) return;
-      const workout = workouts[selectedDay.workoutId];
-      if (!workout || !workout.exercises) return;
-
-      const dayLogs = logs[activeDateKey] || {};
-      let totalSets = 0;
-      let completedSets = 0;
-
-      workout.exercises.forEach(ex => {
-        for (let i = 0; i < (ex.setsCount || 3); i++) {
-          totalSets++;
-          if (dayLogs[`${ex.id}_${i}`]?.done) {
-            completedSets++;
-          }
-        }
-      });
-
-      if (totalSets > 0 && completedSets === totalSets) {
-        triggerCelebration("عالی بود! تمام ست‌های تمرین امروز با موفقیت تکمیل شد! 💪🔥");
-      }
-    } catch (e) {
-      console.warn('checkIfAllDone error safely caught:', e);
+      console.warn('Confetti safely ignored:', e);
     }
   };
 
@@ -570,6 +292,256 @@ export const TrackerProvider = ({ children }) => {
 
   const stopRestTimer = () => {
     setRestTimer(prev => ({ ...prev, isRunning: false, timeLeft: prev.duration }));
+  };
+
+  // Safe Pure State Updater for Sets (Side effects decoupled)
+  const toggleSetComplete = (exerciseId, setIndex, currentReps = '', currentWeight = '', currentSeconds = '') => {
+    try {
+      sounds.playBeep(700, 'sine', 0.08);
+    } catch {}
+
+    const key = `${exerciseId}_${setIndex}`;
+    const currentDayLogs = workoutLogs[activeDateKey] || {};
+    const currentSet = currentDayLogs[key] || { done: false, weight: currentWeight, reps: currentReps, seconds: currentSeconds };
+    const nextDone = !currentSet.done;
+
+    const newLogs = {
+      ...workoutLogs,
+      [activeDateKey]: {
+        ...currentDayLogs,
+        [key]: {
+          ...currentSet,
+          done: nextDone,
+          weight: currentSet.weight || currentWeight,
+          reps: currentSet.reps || currentReps,
+          seconds: currentSet.seconds || currentSeconds
+        }
+      }
+    };
+
+    setWorkoutLogs(newLogs);
+
+    // Schedule side effects outside reducer
+    if (nextDone) {
+      setTimeout(() => {
+        try {
+          const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
+          if (selectedDay) {
+            const currentWorkout = workouts[selectedDay.workoutId];
+            if (currentWorkout?.exercises) {
+              let total = 0;
+              let done = 0;
+              currentWorkout.exercises.forEach(ex => {
+                for (let i = 0; i < (ex.setsCount || 3); i++) {
+                  total++;
+                  if (newLogs[activeDateKey]?.[`${ex.id}_${i}`]?.done) done++;
+                }
+              });
+              if (total > 0 && done === total) {
+                triggerCelebration("تمام ست‌های تمرین امروز با موفقیت تکمیل شد! 💪🔥");
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Set celebration error:', e);
+        }
+      }, 50);
+    }
+  };
+
+  const updateSetValues = (exerciseId, setIndex, field, value) => {
+    const cleanValue = parsePersianDigits(value);
+    const key = `${exerciseId}_${setIndex}`;
+    const dayLogs = workoutLogs[activeDateKey] || {};
+    const current = dayLogs[key] || { done: false, weight: '', reps: '', seconds: '' };
+    
+    setWorkoutLogs({
+      ...workoutLogs,
+      [activeDateKey]: {
+        ...dayLogs,
+        [key]: {
+          ...current,
+          [field]: cleanValue
+        }
+      }
+    });
+  };
+
+  const copyFromPreviousSet = (exerciseId, setIndex) => {
+    if (setIndex <= 0) return;
+    const dayLogs = workoutLogs[activeDateKey] || {};
+    const prevKey = `${exerciseId}_${setIndex - 1}`;
+    const prevSet = dayLogs[prevKey];
+    if (!prevSet) return;
+
+    try {
+      sounds.playBeep(800, 'sine', 0.05);
+    } catch {}
+
+    const currentKey = `${exerciseId}_${setIndex}`;
+    const current = dayLogs[currentKey] || { done: false, weight: '', reps: '', seconds: '' };
+    setWorkoutLogs({
+      ...workoutLogs,
+      [activeDateKey]: {
+        ...dayLogs,
+        [currentKey]: {
+          ...current,
+          weight: prevSet.weight || current.weight,
+          reps: prevSet.reps || current.reps,
+          seconds: prevSet.seconds || current.seconds
+        }
+      }
+    });
+  };
+
+  // Safe Pure State Updater for Meals (Side effects decoupled)
+  const toggleMealComplete = (mealId) => {
+    try {
+      sounds.playBeep(850, 'triangle', 0.1);
+    } catch {}
+
+    const dayLogs = mealLogs[activeDateKey] || {};
+    const nextDone = !dayLogs[mealId];
+    const newMealLogs = {
+      ...mealLogs,
+      [activeDateKey]: {
+        ...dayLogs,
+        [mealId]: nextDone
+      }
+    };
+
+    setMealLogs(newMealLogs);
+
+    if (nextDone) {
+      setTimeout(() => {
+        try {
+          const completedCount = Object.values(newMealLogs[activeDateKey] || {}).filter(Boolean).length;
+          if (completedCount === dietMeals.length) {
+            triggerCelebration("تمام وعده‌ها و مکمل‌های روزانه مصرف شدند! 🥗💪");
+          }
+        } catch (e) {
+          console.warn('Meal celebration error:', e);
+        }
+      }, 50);
+    }
+  };
+
+  const updateMealNote = (mealId, note) => {
+    setMealNotes({
+      ...mealNotes,
+      [activeDateKey]: {
+        ...(mealNotes[activeDateKey] || {}),
+        [mealId]: note
+      }
+    });
+  };
+
+  const addWater = (amountMl = 250) => {
+    try {
+      sounds.playBeep(900, 'sine', 0.12);
+    } catch {}
+
+    const current = waterLogs[activeDateKey] || 0;
+    const next = Math.min(5000, current + amountMl);
+    setWaterLogs({
+      ...waterLogs,
+      [activeDateKey]: next
+    });
+
+    if (current < 2500 && next >= 2500) {
+      setTimeout(() => triggerCelebration("هدف ۲.۵ لیتر آب روزانه تکمیل شد 💧"), 50);
+    }
+  };
+
+  const resetWater = () => {
+    setWaterLogs({
+      ...waterLogs,
+      [activeDateKey]: 0
+    });
+  };
+
+  // In-place Exercise Management
+  const addExerciseToDay = (dayId, exercise) => {
+    const targetDay = daysSchedule.find(d => d.id === dayId);
+    if (!targetDay) return;
+    const workoutId = targetDay.workoutId;
+    const currentWorkout = workouts[workoutId] || { id: workoutId, title: targetDay.title, exercises: [] };
+    const newEx = {
+      ...exercise,
+      id: `custom_${Date.now()}_${exercise.id || 'ex'}`,
+      setsCount: exercise.defaultSets || 3,
+      setsReps: exercise.setsReps || `${exercise.defaultSets || 3} × 10`,
+      suggestedReps: exercise.suggestedReps || [10, 10, 10]
+    };
+
+    setWorkouts({
+      ...workouts,
+      [workoutId]: {
+        ...currentWorkout,
+        exercises: [...(currentWorkout.exercises || []), newEx]
+      }
+    });
+    setTimeout(() => triggerCelebration('حرکت با موفقیت اضافه شد! 🏋️'), 50);
+  };
+
+  const removeExerciseFromDay = (dayId, exerciseId) => {
+    if (!window.confirm('آیا از حذف این حرکت از برنامه مطمئن هستید؟')) return;
+    const targetDay = daysSchedule.find(d => d.id === dayId);
+    if (!targetDay) return;
+    const workoutId = targetDay.workoutId;
+    const currentWorkout = workouts[workoutId];
+    if (!currentWorkout) return;
+
+    setWorkouts({
+      ...workouts,
+      [workoutId]: {
+        ...currentWorkout,
+        exercises: currentWorkout.exercises.filter(e => e.id !== exerciseId)
+      }
+    });
+  };
+
+  const updateExerciseSetsCount = (dayId, exerciseId, delta) => {
+    const targetDay = daysSchedule.find(d => d.id === dayId);
+    if (!targetDay) return;
+    const workoutId = targetDay.workoutId;
+    const currentWorkout = workouts[workoutId];
+    if (!currentWorkout) return;
+
+    const updated = currentWorkout.exercises.map(ex => {
+      if (ex.id === exerciseId) {
+        const newCount = Math.max(1, Math.min(10, (ex.setsCount || 3) + delta));
+        return {
+          ...ex,
+          setsCount: newCount,
+          setsReps: `${newCount} ست`
+        };
+      }
+      return ex;
+    });
+
+    setWorkouts({
+      ...workouts,
+      [workoutId]: {
+        ...currentWorkout,
+        exercises: updated
+      }
+    });
+  };
+
+  // In-place Meal Management
+  const addMeal = (newMeal) => {
+    setDietMeals([...dietMeals, { ...newMeal, id: `meal_${Date.now()}` }]);
+    setTimeout(() => triggerCelebration('وعده غذایی جدید اضافه شد! 🥗'), 50);
+  };
+
+  const removeMeal = (mealId) => {
+    if (!window.confirm('آیا از حذف این وعده غذایی مطمئن هستید؟')) return;
+    setDietMeals(dietMeals.filter(m => m.id !== mealId));
+  };
+
+  const updateMeal = (mealId, field, value) => {
+    setDietMeals(dietMeals.map(m => (m.id === mealId ? { ...m, [field]: value } : m)));
   };
 
   const openVideoModal = (exercise) => {
@@ -609,38 +581,36 @@ export const TrackerProvider = ({ children }) => {
   };
 
   const replaceExerciseInWorkout = (targetExerciseId, newExercise) => {
-    setWorkouts(prev => {
-      const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
-      if (!selectedDay) return prev;
-      const workout = prev[selectedDay.workoutId];
-      if (!workout) return prev;
+    const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
+    if (!selectedDay) return;
+    const workout = workouts[selectedDay.workoutId];
+    if (!workout) return;
 
-      const updatedExercises = workout.exercises.map(ex => {
-        if (ex.id === targetExerciseId) {
-          return {
-            ...ex,
-            id: newExercise.id,
-            nameFa: newExercise.nameFa,
-            nameEn: newExercise.nameEn,
-            targetMuscle: newExercise.targetMuscle,
-            metricType: newExercise.metricType || 'weight_reps',
-            biomechanics: newExercise.biomechanics,
-            youtubeId: newExercise.youtubeId,
-            aparatId: newExercise.aparatId || '',
-            suggestedReps: newExercise.suggestedReps || [12, 10, 8, 8],
-            defaultSeconds: newExercise.defaultSeconds || 30
-          };
-        }
-        return ex;
-      });
+    const updatedExercises = workout.exercises.map(ex => {
+      if (ex.id === targetExerciseId) {
+        return {
+          ...ex,
+          id: newExercise.id,
+          nameFa: newExercise.nameFa,
+          nameEn: newExercise.nameEn,
+          targetMuscle: newExercise.targetMuscle,
+          metricType: newExercise.metricType || 'weight_reps',
+          biomechanics: newExercise.biomechanics,
+          youtubeId: newExercise.youtubeId,
+          aparatId: newExercise.aparatId || '',
+          suggestedReps: newExercise.suggestedReps || [12, 10, 8, 8],
+          defaultSeconds: newExercise.defaultSeconds || 30
+        };
+      }
+      return ex;
+    });
 
-      return {
-        ...prev,
-        [selectedDay.workoutId]: {
-          ...workout,
-          exercises: updatedExercises
-        }
-      };
+    setWorkouts({
+      ...workouts,
+      [selectedDay.workoutId]: {
+        ...workout,
+        exercises: updatedExercises
+      }
     });
     closeSubstituteModal();
   };
@@ -661,26 +631,21 @@ export const TrackerProvider = ({ children }) => {
 
   const resetTodayLogs = () => {
     if (window.confirm("آیا مایلید تمام تیک‌ها و یادداشت‌های روز جاری پاکسازی شوند؟")) {
-      setWorkoutLogs(prev => {
-        const next = { ...prev };
-        delete next[activeDateKey];
-        return next;
-      });
-      setMealLogs(prev => {
-        const next = { ...prev };
-        delete next[activeDateKey];
-        return next;
-      });
-      setMealNotes(prev => {
-        const next = { ...prev };
-        delete next[activeDateKey];
-        return next;
-      });
-      setWaterLogs(prev => {
-        const next = { ...prev };
-        delete next[activeDateKey];
-        return next;
-      });
+      const nextW = { ...workoutLogs };
+      delete nextW[activeDateKey];
+      setWorkoutLogs(nextW);
+
+      const nextM = { ...mealLogs };
+      delete nextM[activeDateKey];
+      setMealLogs(nextM);
+
+      const nextN = { ...mealNotes };
+      delete nextN[activeDateKey];
+      setMealNotes(nextN);
+
+      const nextWt = { ...waterLogs };
+      delete nextWt[activeDateKey];
+      setWaterLogs(nextWt);
     }
   };
 
@@ -696,7 +661,7 @@ export const TrackerProvider = ({ children }) => {
       waterLogs,
       aiConfig,
       exportedAt: new Date().toISOString(),
-      version: '5.0'
+      version: '6.0'
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -720,7 +685,7 @@ export const TrackerProvider = ({ children }) => {
       if (data.waterLogs) setWaterLogs(data.waterLogs);
       if (data.aiConfig) setAiConfig(data.aiConfig);
       setHasCompletedOnboarding(true);
-      triggerCelebration("اطلاعات پشتیبان با موفقیت بازگردانی شد! 🎉");
+      setTimeout(() => triggerCelebration("اطلاعات پشتیبان با موفقیت بازگردانی شد! 🎉"), 50);
       return true;
     } catch {
       alert("خطا در بازگردانی فایل پشتیبان. لطفاً از صحت فایل JSON اطمینان حاصل کنید.");
@@ -735,7 +700,7 @@ export const TrackerProvider = ({ children }) => {
     setDietMeals(initialMeals);
     setHasCompletedOnboarding(true);
     setIsOnboardingOpen(false);
-    triggerCelebration("الگوی استاندارد بارگذاری شد! 🚀");
+    setTimeout(() => triggerCelebration("الگوی استاندارد بارگذاری شد! 🚀"), 50);
   };
 
   return (
