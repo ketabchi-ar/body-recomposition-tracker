@@ -33,7 +33,8 @@ export const Header = () => {
     openFocusMode,
     setAiCoachModal,
     setIsSettingsOpen,
-    setIsOnboardingOpen
+    setIsOnboardingOpen,
+    setIsHealthSyncOpen
   } = useTracker();
 
   const [showProfileDetails, setShowProfileDetails] = useState(false);
