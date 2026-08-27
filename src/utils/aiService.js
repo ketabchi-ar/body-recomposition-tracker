@@ -5,35 +5,36 @@ export const AI_PROVIDERS = [
   {
     id: 'gemini',
     name: 'Google Gemini',
-    description: 'مدل‌های سریع و قدرتمند گوگل (رایگان و سریع)',
+    description: 'مدل‌های هوش مصنوعی رسمی گوگل (سریع و بهینه‌سازی‌شده)',
     defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
     defaultModel: 'gemini-1.5-flash',
     popularModels: [
       'gemini-1.5-flash',
       'gemini-2.0-flash',
-      'gemini-1.5-pro',
-      'gemini-2.5-flash'
+      'gemini-2.5-flash',
+      'gemini-1.5-pro'
     ],
     getKeyUrl: 'https://aistudio.google.com/app/apikey'
   },
   {
     id: 'openrouter',
-    name: 'OpenRouter (جهانی)',
-    description: 'دسترسی به تمام مدل‌های مطرح دنیا (Claude, GPT-4o, DeepSeek)',
+    name: 'OpenRouter (جهانی و رایگان)',
+    description: 'دسترسی به Claude 3.5، DeepSeek و مدل‌های رایگان بین‌المللی',
     defaultEndpoint: 'https://openrouter.ai/api/v1',
-    defaultModel: 'deepseek/deepseek-chat',
+    defaultModel: 'google/gemini-2.0-flash-lite-preview-02-05:free',
     popularModels: [
+      'google/gemini-2.0-flash-lite-preview-02-05:free',
+      'meta-llama/llama-3.3-70b-instruct:free',
       'deepseek/deepseek-chat',
-      'anthropic/claude-3.5-sonnet',
       'openai/gpt-4o-mini',
-      'google/gemini-flash-1.5'
+      'anthropic/claude-3.5-sonnet'
     ],
     getKeyUrl: 'https://openrouter.ai/keys'
   },
   {
     id: 'openai',
     name: 'OpenAI (ChatGPT)',
-    description: 'مدل‌های رسمی OpenAI',
+    description: 'مدل‌های رسمی شرکت OpenAI',
     defaultEndpoint: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4o-mini',
     popularModels: [
@@ -46,7 +47,7 @@ export const AI_PROVIDERS = [
   {
     id: 'avalai',
     name: 'AvalAI (پلتفرم ایرانی)',
-    description: 'سرویس ایرانی بدون نیاز به فیلترشکن با پرداخت ریالی',
+    description: 'سرویس ایرانی بدون فیلترشکن و پرداخت ریالی',
     defaultEndpoint: 'https://api.avalai.ir/v1',
     defaultModel: 'gpt-4o-mini',
     popularModels: [
@@ -83,9 +84,9 @@ export function getLocalExerciseSubstitutes(exercise) {
     return exercisesBank.filter(e => found.substitutes.includes(e.id));
   }
   if (found && found.muscleGroup) {
-    return exercisesBank.filter(e => e.muscleGroup === found.muscleGroup && e.id !== found.id).slice(0, 3);
+    return exercisesBank.filter(e => e.muscleGroup === found.muscleGroup && e.id !== found.id).slice(0, 4);
   }
-  return exercisesBank.slice(0, 3);
+  return exercisesBank.slice(0, 4);
 }
 
 export function getLocalFoodSubstitutes(mealTitle, itemText = '') {
@@ -102,25 +103,34 @@ export function getLocalFoodSubstitutes(mealTitle, itemText = '') {
 }
 
 // Universal AI Caller Supporting Gemini, OpenAI, OpenRouter, AvalAI, GapGPT
-export async function callAIProvider({ provider = 'gemini', apiKey, model, customBaseUrl = '', prompt, systemInstruction = '' }) {
+export async function callAIProvider({ 
+  provider = 'gemini', 
+  apiKey, 
+  model, 
+  customBaseUrl = '', 
+  prompt, 
+  systemInstruction = '',
+  maxTokens = 1500 
+}) {
   if (!apiKey || apiKey.trim() === '') {
     throw new Error('لطفاً ابتدا کلید API خود را وارد کنید.');
   }
 
   const key = apiKey.trim();
-  const selectedModel = model || (AI_PROVIDERS.find(p => p.id === provider)?.defaultModel) || 'gemini-1.5-flash';
+  const providerInfo = AI_PROVIDERS.find(p => p.id === provider) || AI_PROVIDERS[0];
+  let selectedModel = (model || providerInfo.defaultModel || 'gemini-1.5-flash').trim();
 
   if (provider === 'gemini') {
     // Google Gemini REST API v1beta
-    // Remove model prefix if present e.g. models/gemini-1.5-flash -> gemini-1.5-flash
-    const cleanModel = selectedModel.replace('models/', '');
+    // Remove "models/" prefix if user included it
+    const cleanModel = selectedModel.replace(/^models\//, '');
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${key}`;
 
     const body = {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 2048
+        maxOutputTokens: Math.min(2048, maxTokens)
       }
     };
     if (systemInstruction) {
@@ -146,11 +156,9 @@ export async function callAIProvider({ provider = 'gemini', apiKey, model, custo
     // OpenAI Compatible API (OpenRouter, OpenAI, AvalAI, GapGPT)
     let baseUrl = customBaseUrl.trim();
     if (!baseUrl) {
-      const provInfo = AI_PROVIDERS.find(p => p.id === provider);
-      baseUrl = provInfo?.defaultEndpoint || 'https://api.openai.com/v1';
+      baseUrl = providerInfo.defaultEndpoint;
     }
 
-    // Ensure no trailing slash
     baseUrl = baseUrl.replace(/\/+$/, '');
     const endpoint = `${baseUrl}/chat/completions`;
 
@@ -176,7 +184,8 @@ export async function callAIProvider({ provider = 'gemini', apiKey, model, custo
       body: JSON.stringify({
         model: selectedModel,
         messages,
-        temperature: 0.7
+        temperature: 0.7,
+        max_tokens: Math.min(1500, maxTokens) // Enforce small token cap to prevent OpenRouter insufficient credit errors
       })
     });
 
@@ -223,7 +232,7 @@ export async function fetchAvailableModels(provider, apiKey, customBaseUrl = '')
   }
 }
 
-// Test AI Connection
+// Test AI Connection with very low token requirement
 export async function testAIConnection(provider, apiKey, model, customBaseUrl = '') {
   const prompt = 'تست اتصال: لطفا در یک کلمه پاسخ دهید «آماده».';
   const response = await callAIProvider({
@@ -232,7 +241,8 @@ export async function testAIConnection(provider, apiKey, model, customBaseUrl = 
     model,
     customBaseUrl,
     prompt,
-    systemInstruction: 'پاسخ بسیار کوتاه دهید.'
+    systemInstruction: 'پاسخ بسیار کوتاه دهید.',
+    maxTokens: 50 // Ultra low token limit for zero-cost connection testing
   });
   return response;
 }
@@ -292,7 +302,8 @@ export async function generateAIPlanWithAI(userSpecs, aiConfig) {
           "calories": 60,
           "proteinRequired": 10,
           "biomechanics": "نکته ایمنی فرم و دیسک کمر",
-          "youtubeId": "VmB1G1K7v94"
+          "youtubeId": "VmB1G1K7v94",
+          "aparatId": ""
         }
       ]
     }
@@ -317,10 +328,10 @@ export async function generateAIPlanWithAI(userSpecs, aiConfig) {
   const raw = await callAIProvider({
     ...aiConfig,
     prompt: userPrompt,
-    systemInstruction: systemPrompt
+    systemInstruction: systemPrompt,
+    maxTokens: 2000
   });
 
-  // Clean markdown json fences if any
   const cleaned = raw.replace(/^```json/m, '').replace(/^```/m, '').replace(/```$/m, '').trim();
   return JSON.parse(cleaned);
 }
@@ -344,7 +355,8 @@ export async function generateDailyAIReport(aiConfig, { profile, dayName, workou
   return await callAIProvider({
     ...aiConfig,
     prompt: userPrompt,
-    systemInstruction: systemPrompt
+    systemInstruction: systemPrompt,
+    maxTokens: 1500
   });
 }
 
@@ -358,6 +370,7 @@ export async function generateAISubstituteAdvice(aiConfig, itemName, itemType = 
 
   return await callAIProvider({
     ...aiConfig,
-    prompt
+    prompt,
+    maxTokens: 800
   });
 }

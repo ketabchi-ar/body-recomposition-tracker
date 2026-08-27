@@ -14,7 +14,7 @@ import {
   Minus
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
-import { toPersianDigits, parsePersianDigits } from '../utils/jalali';
+import { toPersianDigits } from '../utils/jalali';
 
 export const ExerciseCard = ({ exercise, index, dayId }) => {
   const { 
@@ -33,16 +33,17 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
   const dayLogs = workoutLogs[activeDateKey] || {};
 
   let completedCount = 0;
-  for (let i = 0; i < exercise.setsCount; i++) {
+  for (let i = 0; i < (exercise.setsCount || 3); i++) {
     if (dayLogs[`${exercise.id}_${i}`]?.done) {
       completedCount++;
     }
   }
-  const isFullyDone = completedCount === exercise.setsCount;
+  const isFullyDone = completedCount === (exercise.setsCount || 3);
   const isTimeBased = exercise.metricType === 'time_seconds';
+  const hasVideo = Boolean(exercise.youtubeId || exercise.aparatId);
 
   return (
-    <div className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+    <div className={`rounded-3xl border transition-all duration-200 overflow-hidden ${
       isFullyDone 
         ? 'bg-slate-900/90 border-emerald-500/40 shadow-lg shadow-emerald-500/5' 
         : 'bg-slate-900/70 border-slate-800 hover:border-slate-700/80 shadow-md'
@@ -67,7 +68,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                   {exercise.nameFa}
                 </h3>
                 {exercise.targetMuscle && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
                     {exercise.targetMuscle}
                   </span>
                 )}
@@ -89,11 +90,11 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
               <span>جایگزین</span>
             </button>
 
-            {exercise.youtubeId && (
+            {hasVideo && (
               <button
                 onClick={() => openVideoModal(exercise)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-red-200 border border-red-500/30 text-xs font-bold transition group"
-                title="مشاهده ویدیوی آموزشی نحوه اجرای صحیح حرکت"
+                title="مشاهده ویدیوی آموزشی (یوتیوب / آپارات)"
               >
                 <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
                   <Play className="w-3 h-3 fill-current ml-0.5" />
@@ -123,14 +124,14 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
             </span>
 
             {exercise.calories > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 text-amber-300 border border-slate-700/60">
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 text-amber-300 border border-slate-700/60 font-mono">
                 <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span>{toPersianDigits(exercise.calories)} kcal مصرفی</span>
+                <span>{toPersianDigits(exercise.calories)} kcal</span>
               </span>
             )}
 
             {exercise.proteinRequired > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 text-cyan-300 border border-slate-700/60">
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 text-cyan-300 border border-slate-700/60 font-mono">
                 <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
                 <span>{toPersianDigits(exercise.proteinRequired)}g پروتئین</span>
               </span>
@@ -148,7 +149,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
               >
                 <Minus className="w-3 h-3" />
               </button>
-              <span className="font-bold text-white px-1">{toPersianDigits(exercise.setsCount || 3)}</span>
+              <span className="font-bold text-white px-1 font-mono">{toPersianDigits(exercise.setsCount || 3)}</span>
               <button
                 onClick={() => updateExerciseSetsCount(dayId, exercise.id, 1)}
                 disabled={(exercise.setsCount || 3) >= 8}
@@ -165,7 +166,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
           <div className="mt-3 p-3 rounded-xl bg-slate-950/70 border border-emerald-500/20 flex items-start gap-2 text-xs text-slate-200 leading-relaxed">
             <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
             <div>
-              <strong className="text-emerald-400 font-semibold ml-1">نکته بیومکانیک (سلامت دیسک و مفاصل):</strong>
+              <strong className="text-emerald-400 font-semibold ml-1">نکته بیومکانیک و محافظت ستون فقرات:</strong>
               <span>{exercise.biomechanics}</span>
             </div>
           </div>
@@ -203,7 +204,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                     ست {toPersianDigits(setIdx + 1)}
                   </span>
                   {suggestedRep && (
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-slate-400 font-mono">
                       ({toPersianDigits(suggestedRep)} تکرار)
                     </span>
                   )}
@@ -218,7 +219,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                         placeholder="مدت زمان"
                         value={toPersianDigits(setData.seconds || '')}
                         onChange={(e) => updateSetValues(exercise.id, setIdx, 'seconds', e.target.value)}
-                        className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center"
+                        className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
                       />
                       <span className="text-[10px] text-slate-400">ثانیه</span>
                     </div>
@@ -230,7 +231,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                           placeholder="وزنه"
                           value={toPersianDigits(setData.weight || '')}
                           onChange={(e) => updateSetValues(exercise.id, setIdx, 'weight', e.target.value)}
-                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center"
+                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
                         />
                         <span className="text-[10px] text-slate-400">kg</span>
                       </div>
@@ -241,7 +242,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                           placeholder="تکرار"
                           value={toPersianDigits(setData.reps || '')}
                           onChange={(e) => updateSetValues(exercise.id, setIdx, 'reps', e.target.value)}
-                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center"
+                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
                         />
                         <span className="text-[10px] text-slate-400">تکرار</span>
                       </div>

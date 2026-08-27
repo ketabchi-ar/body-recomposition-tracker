@@ -13,16 +13,18 @@ import {
   Apple, 
   Zap, 
   Activity, 
-  Egg,
-  CheckCheck,
-  Plus,
-  RotateCcw,
-  MessageSquare,
-  ArrowRightLeft,
-  Trash2,
-  X
+  Egg, 
+  CheckCheck, 
+  Plus, 
+  RotateCcw, 
+  MessageSquare, 
+  ArrowRightLeft, 
+  Trash2, 
+  X,
+  Search
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
+import { foodsBank } from '../data/foodsBank';
 import { toPersianDigits, parsePersianDigits } from '../utils/jalali';
 
 export const DietSection = () => {
@@ -37,22 +39,19 @@ export const DietSection = () => {
     addWater, 
     resetWater, 
     activeDateKey, 
-    profile,
-    addMeal,
+    profile, 
+    addMeal, 
     removeMeal 
   } = useTracker();
 
   const [isAddMealModalOpen, setIsAddMealModalOpen] = useState(false);
-  const [newMealData, setNewMealData] = useState({
-    title: '',
-    subtitle: '',
-    time: '۱۲:۰۰',
-    items: '',
-    calories: '۳۰۰',
-    protein: '۲۵',
-    category: 'وعده اصلی',
-    icon: 'Utensils'
-  });
+  
+  // New Meal Builder State with Live Search & Calculator
+  const [mealTitle, setMealTitle] = useState('');
+  const [mealTime, setMealTime] = useState('13:30');
+  const [mealCategory, setMealCategory] = useState('وعده اصلی');
+  const [selectedItems, setSelectedItems] = useState([]); // [{ food, amount }]
+  const [foodSearchQuery, setFoodSearchQuery] = useState('');
 
   const dayMealLogs = mealLogs[activeDateKey] || {};
   const dayMealNotes = mealNotes[activeDateKey] || {};
@@ -65,14 +64,14 @@ export const DietSection = () => {
 
   dietMeals.forEach(meal => {
     if (dayMealLogs[meal.id]) {
-      consumedCalories += meal.calories;
-      consumedProtein += meal.protein;
+      consumedCalories += meal.calories || 0;
+      consumedProtein += meal.protein || 0;
       completedMealsCount++;
     }
   });
 
   const targetCalories = parseInt(parsePersianDigits(profile.dailyTargetCalories)) || 2200;
-  const targetProtein = parseInt(parsePersianDigits(profile.dailyTargetProtein)) || 192;
+  const targetProtein = parseInt(parsePersianDigits(profile.dailyTargetProtein)) || 165;
   const targetWater = (profile.waterTargetLiters || 2.5) * 1000; // ml
 
   const caloriesPercent = Math.min(100, Math.round((consumedCalories / targetCalories) * 100));
@@ -87,32 +86,63 @@ export const DietSection = () => {
     });
   };
 
-  const handleCreateMeal = (e) => {
+  // Live Food Search Results
+  const searchResults = foodSearchQuery.trim()
+    ? foodsBank.filter(f => f.nameFa.includes(foodSearchQuery.trim())).slice(0, 6)
+    : [];
+
+  const handleAddItemToMeal = (food) => {
+    setSelectedItems(prev => [...prev, { food, amount: food.servingSize || 100 }]);
+    setFoodSearchQuery('');
+  };
+
+  const handleUpdateItemAmount = (index, amount) => {
+    const clean = parseFloat(parsePersianDigits(amount)) || 0;
+    setSelectedItems(prev => {
+      const next = [...prev];
+      next[index].amount = clean;
+      return next;
+    });
+  };
+
+  const handleRemoveItemFromMeal = (index) => {
+    setSelectedItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Calculate total calories & protein of custom meal being built
+  let totalMealCalories = 0;
+  let totalMealProtein = 0;
+  selectedItems.forEach(({ food, amount }) => {
+    const ratio = (amount || 0) / (food.servingSize || 100);
+    totalMealCalories += Math.round((food.calories || 0) * ratio);
+    totalMealProtein += Math.round((food.protein || 0) * ratio);
+  });
+
+  const handleCreateMealSubmit = (e) => {
     e.preventDefault();
-    if (!newMealData.title.trim()) return;
+    if (!mealTitle.trim() || selectedItems.length === 0) {
+      alert("لطفاً عنوان وعده و حداقل یک قلم خوراکی از بانک غذاها اضافه فرمایید.");
+      return;
+    }
+
+    const itemsText = selectedItems.map(
+      ({ food, amount }) => `${toPersianDigits(amount)} ${food.unit} ${food.nameFa}`
+    );
 
     addMeal({
-      title: newMealData.title.trim(),
-      subtitle: newMealData.subtitle.trim(),
-      time: newMealData.time,
-      items: newMealData.items.split('\n').filter(i => i.trim()),
-      calories: parseInt(parsePersianDigits(newMealData.calories)) || 0,
-      protein: parseInt(parsePersianDigits(newMealData.protein)) || 0,
-      category: newMealData.category,
-      icon: newMealData.icon
+      title: mealTitle.trim(),
+      subtitle: selectedItems[0]?.food?.nameFa || '',
+      time: mealTime,
+      items: itemsText,
+      calories: totalMealCalories,
+      protein: totalMealProtein,
+      category: mealCategory,
+      icon: mealCategory === 'مکمل' ? 'Zap' : 'Utensils'
     });
 
     setIsAddMealModalOpen(false);
-    setNewMealData({
-      title: '',
-      subtitle: '',
-      time: '۱۲:۰۰',
-      items: '',
-      calories: '۳۰۰',
-      protein: '۲۵',
-      category: 'وعده اصلی',
-      icon: 'Utensils'
-    });
+    setMealTitle('');
+    setSelectedItems([]);
   };
 
   const getMealIcon = (iconName) => {
@@ -132,7 +162,7 @@ export const DietSection = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Nutrition & Macro Overview */}
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/70 p-5 shadow-xl">
+      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/70 p-5 sm:p-6 shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
           <div>
             <div className="flex items-center gap-2">
@@ -151,10 +181,10 @@ export const DietSection = () => {
           <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
             <button
               onClick={() => setIsAddMealModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:scale-105"
             >
-              <Plus className="w-4 h-4 text-emerald-400" />
-              <span>افزودن وعده غذایی</span>
+              <Plus className="w-4 h-4" />
+              <span>افزودن وعده با جستجوی هوشمند غذاها</span>
             </button>
 
             {completedMealsCount < dietMeals.length && (
@@ -169,16 +199,16 @@ export const DietSection = () => {
           </div>
         </div>
 
-        {/* 3 Macro Progress Cards: Calories, Protein, Water */}
+        {/* 3 Macro Progress Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {/* Calories Progress */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400 flex items-center gap-1.5">
                 <Flame className="w-4 h-4 text-amber-400" />
                 کالری دریافتی
               </span>
-              <span className="text-xs font-bold text-amber-300">
+              <span className="text-xs font-bold text-amber-300 font-mono">
                 {toPersianDigits(consumedCalories)} / {toPersianDigits(targetCalories)} kcal
               </span>
             </div>
@@ -194,13 +224,13 @@ export const DietSection = () => {
           </div>
 
           {/* Protein Progress */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400 flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-cyan-400" />
                 پروتئین خالص
               </span>
-              <span className="text-xs font-bold text-cyan-300">
+              <span className="text-xs font-bold text-cyan-300 font-mono">
                 {toPersianDigits(consumedProtein)} / {toPersianDigits(targetProtein)} g
               </span>
             </div>
@@ -216,13 +246,13 @@ export const DietSection = () => {
           </div>
 
           {/* Water Progress */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400 flex items-center gap-1.5">
                 <Droplets className="w-4 h-4 text-sky-400" />
                 مصرف آب روزانه
               </span>
-              <span className="text-xs font-bold text-sky-300">
+              <span className="text-xs font-bold text-sky-300 font-mono">
                 {toPersianDigits((currentWater / 1000).toFixed(1))} / {toPersianDigits(profile.waterTargetLiters || 2.5)} لیتر
               </span>
             </div>
@@ -239,7 +269,7 @@ export const DietSection = () => {
         </div>
       </div>
 
-      {/* Interactive Water Counter Widget */}
+      {/* Water Counter Widget */}
       <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -248,10 +278,10 @@ export const DietSection = () => {
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">
-                ردیاب نوشیدن آب در طول روز و کار پشت میز
+                ردیاب نوشیدن آب در طول روز
               </h3>
               <p className="text-xs text-slate-400">
-                هدف: حداقل {toPersianDigits(profile.waterTargetLiters || 2.5)} لیتر جهت جلوگیری از خشکی مفاصل و کندی چربی‌سوزی
+                هدف: حداقل {toPersianDigits(profile.waterTargetLiters || 2.5)} لیتر جهت هیدراتاسیون عضلات
               </p>
             </div>
           </div>
@@ -262,14 +292,14 @@ export const DietSection = () => {
               className="flex items-center gap-1 px-3 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-xs font-bold transition"
             >
               <Plus className="w-4 h-4" />
-              <span>+۱ لیوان (۲۵۰ml)</span>
+              <span>+۱ لیوان ({toPersianDigits(250)}ml)</span>
             </button>
             <button
               onClick={() => addWater(500)}
               className="flex items-center gap-1 px-3 py-2 rounded-xl bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-600/40 text-xs font-bold transition"
             >
               <Plus className="w-4 h-4" />
-              <span>+شیکر (۵۰۰ml)</span>
+              <span>+شیکر ({toPersianDigits(500)}ml)</span>
             </button>
             {currentWater > 0 && (
               <button
@@ -291,13 +321,6 @@ export const DietSection = () => {
             <Utensils className="w-4 h-4 text-emerald-400" />
             <span>جدول وعده‌ها و زمان‌بندی مکمل‌ها ({toPersianDigits(dietMeals.length)} وعده روزانه):</span>
           </span>
-          <button
-            onClick={() => setIsAddMealModalOpen(true)}
-            className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>افزودن وعده</span>
-          </button>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -315,7 +338,7 @@ export const DietSection = () => {
                 }`}
               >
                 <div>
-                  {/* Top Bar: Time, Category, Actions & Checkbox */}
+                  {/* Top Bar */}
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="p-2 rounded-xl bg-slate-800 border border-slate-700">
@@ -338,7 +361,7 @@ export const DietSection = () => {
                       <button
                         onClick={() => openSubstituteModal(meal, 'food')}
                         className="p-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs transition"
-                        title="جایگزین‌های این وعده"
+                        title="جایگزینی هوشمند این وعده"
                       >
                         <ArrowRightLeft className="w-3.5 h-3.5" />
                       </button>
@@ -365,13 +388,6 @@ export const DietSection = () => {
                     </div>
                   </div>
 
-                  {/* Subtitle */}
-                  {meal.subtitle && (
-                    <p className="text-xs font-semibold text-slate-300 mb-2">
-                      {meal.subtitle}
-                    </p>
-                  )}
-
                   {/* Meal Items List */}
                   {meal.items && meal.items.length > 0 && (
                     <ul className="space-y-1.5 my-3 bg-slate-950/60 p-3 rounded-xl border border-slate-850 text-xs text-slate-200">
@@ -384,11 +400,11 @@ export const DietSection = () => {
                     </ul>
                   )}
 
-                  {/* Meal Note / Deviation Input */}
+                  {/* Meal Note Input */}
                   <div className="mb-3">
                     <div className="flex items-center gap-1 text-[11px] text-slate-400 mb-1">
                       <MessageSquare className="w-3 h-3 text-cyan-400" />
-                      <span>یادداشت / گزارش تغییرات این وعده (برای بررسی AI):</span>
+                      <span>یادداشت یا تغییرات این وعده:</span>
                     </div>
                     <input
                       type="text"
@@ -400,14 +416,14 @@ export const DietSection = () => {
                   </div>
                 </div>
 
-                {/* Bottom Macro Pills */}
+                {/* Macro Pills */}
                 <div className="flex items-center justify-between pt-2.5 border-t border-slate-800 text-xs">
-                  <span className="text-slate-400 text-[11px]">ارزش غذایی وعده:</span>
+                  <span className="text-slate-400 text-[11px]">ارزش غذایی محاسبه‌شده:</span>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20 font-mono">
                       {toPersianDigits(meal.calories)} kcal
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-bold border border-cyan-500/20">
+                    <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-bold border border-cyan-500/20 font-mono">
                       {toPersianDigits(meal.protein)}g پروتئین
                     </span>
                   </div>
@@ -418,93 +434,162 @@ export const DietSection = () => {
         </div>
       </div>
 
-      {/* Add Meal Modal */}
+      {/* Advanced Food Bank Live-Search Meal Builder Modal */}
       {isAddMealModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-md bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white">افزودن وعده غذایی جدید</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
+          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[90vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="p-5 bg-slate-900 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-base text-white">سازنده هوشمند وعده غذایی با بانک داده‌ها</h3>
+              </div>
               <button onClick={() => setIsAddMealModalOpen(false)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateMeal} className="p-5 space-y-3 text-xs">
+            {/* Form */}
+            <form onSubmit={handleCreateMealSubmit} className="p-5 overflow-y-auto space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1">عنوان وعده:</label>
+                <label className="block text-slate-300 font-bold mb-1">عنوان وعده:</label>
                 <input
                   type="text"
-                  placeholder="مثال: میان‌وعده عصر"
-                  value={newMealData.title}
-                  onChange={(e) => setNewMealData({ ...newMealData, title: e.target.value })}
+                  placeholder="مثال: ناهار روزهای تمرین"
+                  value={mealTitle}
+                  onChange={(e) => setMealTitle(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 mb-1">ساعت مصرف:</label>
+                  <label className="block text-slate-300 font-bold mb-1">ساعت مصرف (Time Picker):</label>
                   <input
-                    type="text"
-                    value={newMealData.time}
-                    onChange={(e) => setNewMealData({ ...newMealData, time: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center"
+                    type="time"
+                    value={mealTime}
+                    onChange={(e) => setMealTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-center"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 mb-1">دسته‌بندی:</label>
+                  <label className="block text-slate-300 font-bold mb-1">دسته‌بندی:</label>
                   <select
-                    value={newMealData.category}
-                    onChange={(e) => setNewMealData({ ...newMealData, category: e.target.value })}
+                    value={mealCategory}
+                    onChange={(e) => setMealCategory(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
                   >
                     <option value="وعده اصلی">وعده اصلی</option>
                     <option value="میان‌وعده">میان‌وعده</option>
-                    <option value="مکمل">مکمل</option>
+                    <option value="مکمل">مکمل و ریکاوری</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-1">اقلام وعده (هر قلم در یک سطر):</label>
-                <textarea
-                  rows="3"
-                  placeholder="مثال:&#10;۱۵۰ گرم فیله مرغ&#10;۶ قاشق برنج"
-                  value={newMealData.items}
-                  onChange={(e) => setNewMealData({ ...newMealData, items: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
-                ></textarea>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-300 mb-1">کالری تقریبی (kcal):</label>
+              {/* Food Bank Live Search */}
+              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+                <label className="block text-slate-200 font-bold">
+                  جستجو و انتخاب خوراکی‌ها از بانک داده:
+                </label>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
                   <input
                     type="text"
-                    value={newMealData.calories}
-                    onChange={(e) => setNewMealData({ ...newMealData, calories: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-center"
+                    placeholder="تایپ نام غذا (مثال: فیله مرغ، برنج، تخم مرغ، جو دوسر...)"
+                    value={foodSearchQuery}
+                    onChange={(e) => setFoodSearchQuery(e.target.value)}
+                    className="w-full pr-9 pl-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-300 mb-1">پروتئین (گرم):</label>
-                  <input
-                    type="text"
-                    value={newMealData.protein}
-                    onChange={(e) => setNewMealData({ ...newMealData, protein: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-center"
-                  />
+                {/* Live Search Popup Items */}
+                {searchResults.length > 0 && (
+                  <div className="p-2 rounded-xl bg-slate-900 border border-slate-750 space-y-1 max-h-48 overflow-y-auto">
+                    {searchResults.map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => handleAddItemToMeal(f)}
+                        className="w-full p-2 rounded-lg bg-slate-950 hover:bg-emerald-950/40 text-right flex items-center justify-between text-xs transition border border-transparent hover:border-emerald-500/30"
+                      >
+                        <div>
+                          <span className="font-bold text-white">{f.nameFa}</span>
+                          <span className="text-[10px] text-slate-400 block font-mono">
+                            هر {toPersianDigits(f.servingSize)} {f.unit}: {toPersianDigits(f.calories)} kcal | {toPersianDigits(f.protein)}g پروتئین
+                          </span>
+                        </div>
+                        <Plus className="w-4 h-4 text-emerald-400" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Selected Food Items List with Gram Adjuster */}
+                {selectedItems.length > 0 ? (
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                    <span className="text-slate-400 text-[11px] block">اقلام انتخاب‌شده برای این وعده:</span>
+                    {selectedItems.map(({ food, amount }, idx) => {
+                      const ratio = (amount || 0) / (food.servingSize || 100);
+                      const cal = Math.round((food.calories || 0) * ratio);
+                      const prot = Math.round((food.protein || 0) * ratio);
+
+                      return (
+                        <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                          <div className="flex-1">
+                            <span className="font-bold text-white text-xs">{food.nameFa}</span>
+                            <div className="text-[10px] text-emerald-400 font-mono">
+                              {toPersianDigits(cal)} kcal | {toPersianDigits(prot)}g پروتئین
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={toPersianDigits(amount)}
+                              onChange={(e) => handleUpdateItemAmount(idx, e.target.value)}
+                              className="w-16 px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white text-center font-mono text-xs"
+                            />
+                            <span className="text-[10px] text-slate-400">{food.unit}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItemFromMeal(idx)}
+                              className="p-1 rounded-lg text-slate-500 hover:text-rose-400"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-[11px] text-center py-2">
+                    هنوز غذایی اضافه نشده است. با جستجو در کادر بالا غذاها را انتخاب کنید.
+                  </p>
+                )}
+              </div>
+
+              {/* Total Calculated Macros Banner */}
+              <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 flex items-center justify-between">
+                <span className="font-bold text-white text-xs">مجموع ارزش غذایی کل وعده:</span>
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-amber-300 font-mono text-xs">{toPersianDigits(totalMealCalories)} kcal</span>
+                  <span className="font-bold text-cyan-300 font-mono text-xs">{toPersianDigits(totalMealProtein)}g پروتئین</span>
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black transition"
+                disabled={selectedItems.length === 0}
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black transition disabled:opacity-40"
               >
-                ثبت وعده غذایی
+                ثبت نهایی وعده غذایی در برنامه
               </button>
             </form>
           </div>

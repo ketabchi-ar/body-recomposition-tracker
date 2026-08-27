@@ -5,16 +5,15 @@ import {
   Sparkles, 
   Send, 
   Loader2, 
-  Key, 
   FileText, 
   MessageSquare, 
-  CheckCircle2, 
   Settings2,
   Calendar,
   AlertCircle,
   Check,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  ListFilter
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { AI_PROVIDERS, callAIProvider, generateDailyAIReport, testAIConnection, fetchAvailableModels } from '../utils/aiService';
@@ -67,18 +66,24 @@ export const AICoachModal = () => {
 
   const selectedProviderInfo = AI_PROVIDERS.find(p => p.id === provider) || AI_PROVIDERS[0];
 
-  // Auto fetch models when provider changes or key changes
   const handleFetchModels = async () => {
-    if (!apiKey) return;
+    if (!apiKey) {
+      setTestResult({ success: false, msg: 'برای لود مدل‌ها ابتدا کلید API را وارد کنید.' });
+      return;
+    }
     setIsFetchingModels(true);
     try {
       const list = await fetchAvailableModels(provider, apiKey, customBaseUrl);
       if (list && list.length > 0) {
         setModelsList(list);
+        if (!list.includes(model)) {
+          setModel(list[0]);
+        }
+        setTestResult({ success: true, msg: `${list.length} مدل با موفقیت از سرور ${selectedProviderInfo.name} لود شد!` });
       } else {
         setModelsList(selectedProviderInfo.popularModels || []);
       }
-    } catch {
+    } catch (e) {
       setModelsList(selectedProviderInfo.popularModels || []);
     } finally {
       setIsFetchingModels(false);
@@ -93,7 +98,7 @@ export const AICoachModal = () => {
       model: model || selectedProviderInfo.defaultModel,
       customBaseUrl: customBaseUrl.trim()
     });
-    setTestResult({ success: true, msg: 'تنظیمات هوش مصنوعی ذخیره شد! ✅' });
+    setTestResult({ success: true, msg: 'تنظیمات هوش مصنوعی با موفقیت ذخیره شد! ✅' });
     setTimeout(() => setTestResult({ success: false, msg: '' }), 3000);
   };
 
@@ -179,6 +184,8 @@ export const AICoachModal = () => {
     }
   };
 
+  const availableOptions = modelsList.length > 0 ? modelsList : selectedProviderInfo.popularModels;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
       <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
@@ -247,7 +254,7 @@ export const AICoachModal = () => {
             }`}
           >
             <Settings2 className="w-4 h-4" />
-            <span>تنظیمات شرکت‌ها و کلید API</span>
+            <span>تنظیمات شرکت‌ها و انتخاب مدل</span>
           </button>
         </div>
 
@@ -367,6 +374,7 @@ export const AICoachModal = () => {
                           setProvider(p.id);
                           setModel(p.defaultModel);
                           setCustomBaseUrl('');
+                          setModelsList([]);
                         }}
                         className={`p-3 rounded-2xl border text-right transition flex flex-col justify-between ${
                           isSelected
@@ -407,50 +415,49 @@ export const AICoachModal = () => {
                 />
               </div>
 
-              {/* Model Selector & Custom Base URL */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-300">مدل هوش مصنوعی:</label>
-                    <button
-                      type="button"
-                      onClick={handleFetchModels}
-                      disabled={isFetchingModels || !apiKey}
-                      className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${isFetchingModels ? 'animate-spin' : ''}`} />
-                      <span>لود لیست مدل‌ها</span>
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    list="models-list"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder={selectedProviderInfo.defaultModel}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-[11px]"
-                  />
-                  <datalist id="models-list">
-                    {(modelsList.length > 0 ? modelsList : selectedProviderInfo.popularModels).map((m, idx) => (
-                      <option key={idx} value={m} />
-                    ))}
-                  </datalist>
+              {/* Interactive Model Selection Dropdown */}
+              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <ListFilter className="w-4 h-4 text-emerald-400" />
+                    <span>انتخاب مدل هوش مصنوعی:</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={handleFetchModels}
+                    disabled={isFetchingModels || !apiKey}
+                    className="flex items-center gap-1 text-[11px] text-emerald-400 hover:underline font-bold"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isFetchingModels ? 'animate-spin' : ''}`} />
+                    <span>لود آنلاین لیست مدل‌ها</span>
+                  </button>
                 </div>
 
-                {provider !== 'gemini' && (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-300">
-                      Base URL سفارشی (اختیاری):
-                    </label>
+                <div className="space-y-2">
+                  <select
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                  >
+                    {availableOptions.map((m, idx) => (
+                      <option key={idx} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-500">یا نام مدل سفارشی:</span>
                     <input
                       type="text"
-                      placeholder={selectedProviderInfo.defaultEndpoint}
-                      value={customBaseUrl}
-                      onChange={(e) => setCustomBaseUrl(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-[11px]"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      placeholder="نام مدل..."
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-750 text-white font-mono text-[11px]"
                     />
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Connection Test Result */}
@@ -474,7 +481,7 @@ export const AICoachModal = () => {
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-bold transition disabled:opacity-50"
                 >
                   {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  <span>تست اتصال کلید</span>
+                  <span>تست اتصال کلید API</span>
                 </button>
 
                 <button
@@ -483,7 +490,7 @@ export const AICoachModal = () => {
                   className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black transition shadow-lg shadow-emerald-500/20"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
-                  <span>ذخیره تنظیمات هوش مصنوعی</span>
+                  <span>ذخیره تنظیمات</span>
                 </button>
               </div>
             </div>

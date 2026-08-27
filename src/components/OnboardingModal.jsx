@@ -1,276 +1,248 @@
 import React, { useState } from 'react';
 import { 
   Sparkles, 
-  User, 
   Dumbbell, 
-  Flame, 
   ArrowLeft, 
-  Check, 
-  X, 
-  HeartHandshake,
+  CheckCircle2, 
+  Target, 
+  Flame, 
+  ShieldCheck, 
   Zap,
-  Target
+  Wand2
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
+import { parsePersianDigits } from '../utils/jalali';
 
 export const OnboardingModal = () => {
   const { 
     isOnboardingOpen, 
     setIsOnboardingOpen, 
-    profile, 
     setProfile, 
     setHasCompletedOnboarding, 
-    loadDefaultPreset 
+    loadDefaultPreset,
+    setIsAIPlanGenOpen 
   } = useTracker();
 
-  const [formData, setFormData] = useState({
-    name: profile.name || '',
-    age: profile.age?.replace(' سال', '') || '30',
-    height: profile.height?.replace(' سانتی‌متر', '') || '175',
-    weight: profile.weight?.replace(' کیلوگرم', '') || '75',
-    fatPercentage: profile.fatPercentage?.replace('٪', '') || '',
-    muscleMass: profile.muscleMass?.replace(' کیلوگرم', '') || '',
-    deskHours: profile.deskHours || 8,
-    goal: profile.goal || 'کاهش چربی و افزایش توده عضلانی (Body Recomposition)'
+  const [wizardStep, setWizardStep] = useState(1); // 1: Choose mode, 2: Custom Profile form
+  const [customStats, setCustomStats] = useState({
+    name: '',
+    age: '۳۰',
+    height: '۱۷۵',
+    weight: '۷۵',
+    fatPercentage: '',
+    muscleMass: '',
+    goal: 'کاهش چربی و افزایش توده عضلانی (Body Recomposition)',
+    deskHours: 8
   });
-
-  const [mode, setMode] = useState('choose'); // 'choose' | 'custom_form'
 
   if (!isOnboardingOpen) return null;
 
   const handleSaveCustomProfile = (e) => {
     e.preventDefault();
-    const weightNum = parseFloat(formData.weight) || 75;
-    const heightNum = parseFloat(formData.height) || 175;
-    const ageNum = parseInt(formData.age) || 30;
+    
+    const weightNum = parseFloat(parsePersianDigits(customStats.weight)) || 75;
+    const heightNum = parseFloat(parsePersianDigits(customStats.height)) || 175;
+    const ageNum = parseInt(parsePersianDigits(customStats.age)) || 30;
 
-    // Estimate BMR (Mifflin-St Jeor formula for men)
-    const bmrCalc = Math.round(10 * weightNum + 6.25 * heightNum - 5 * ageNum + 5);
-    const targetCaloriesCalc = String(Math.round(bmrCalc * 1.4));
-    const targetProteinCalc = String(Math.round(weightNum * 2.2));
+    // Standard Mifflin-St Jeor calculation
+    const calculatedBmr = Math.round(10 * weightNum + 6.25 * heightNum - 5 * ageNum + 5);
+    const targetCalories = Math.round(calculatedBmr * 1.35);
+    const targetProtein = Math.round(weightNum * 2.2);
 
-    const updated = {
-      name: formData.name.trim() || 'ورزشکار',
-      age: `${formData.age || '30'} سال`,
-      height: `${formData.height || '175'} سانتی‌متر`,
-      weight: `${formData.weight || '75'} کیلوگرم`,
-      fatPercentage: formData.fatPercentage ? `${formData.fatPercentage}٪` : 'نامشخص',
-      muscleMass: formData.muscleMass ? `${formData.muscleMass} کیلوگرم` : 'نامشخص',
-      bmr: `${bmrCalc} کیلوکالری`,
-      dailyTargetCalories: targetCaloriesCalc,
-      dailyTargetProtein: targetProteinCalc,
+    setProfile({
+      name: customStats.name || 'ورزشکار',
+      age: `${customStats.age} سال`,
+      height: `${customStats.height} سانتی‌متر`,
+      weight: `${customStats.weight} کیلوگرم`,
+      fatPercentage: customStats.fatPercentage ? `${customStats.fatPercentage}٪` : 'نامشخص',
+      muscleMass: customStats.muscleMass ? `${customStats.muscleMass} کیلوگرم` : 'متناسب',
+      bmr: `${calculatedBmr} کیلوکالری`,
+      dailyTargetCalories: String(targetCalories),
+      dailyTargetProtein: String(targetProtein),
       waterTargetLiters: 2.5,
-      deskHours: parseInt(formData.deskHours) || 8,
-      goal: formData.goal
-    };
+      deskHours: customStats.deskHours,
+      goal: customStats.goal
+    });
 
-    setProfile(updated);
     setHasCompletedOnboarding(true);
     setIsOnboardingOpen(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/90 backdrop-blur-lg animate-fadeIn overflow-y-auto">
+      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
         
-        {/* Header */}
-        <div className="p-6 bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-black text-white">
-                خوش آمدید! راه‌اندازی پروفایل ورزشی
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                پلتفرم هوشمند پایش تمرینات، تغذیه و سلامت ارگونومی
-              </p>
+        {/* Top Gradient Banner */}
+        <div className="p-6 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-900 border-b border-slate-800 text-center relative flex-shrink-0">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-xl shadow-emerald-500/20 mb-3 flex items-center justify-center">
+            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+              <Dumbbell className="w-7 h-7 text-emerald-400" />
             </div>
           </div>
 
-          <button
-            onClick={() => setIsOnboardingOpen(false)}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <h2 className="text-xl sm:text-2xl font-black text-white">
+            به پلتفرم هوشمند تناسب اندام خوش آمدید
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed max-w-md mx-auto">
+            ردیاب هوشمند تمرینات قدرتی، ارگونومی ۳۰/۲، برنامه غذایی دقیق و تحلیلگر هوش مصنوعی
+          </p>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {mode === 'choose' ? (
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto flex-1">
+          {wizardStep === 1 ? (
             <div className="space-y-4">
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed text-center max-w-lg mx-auto">
-                می‌توانید برنامه کامل و استاندارد پیش‌فرض (Body Recomposition) را بلافاصله اجرا کنید، یا مشخصات و اهداف شخصی خود را وارد نمایید.
+              <p className="text-xs sm:text-sm text-slate-300 text-center mb-4">
+                نحوه شروع کار با برنامه را انتخاب کنید:
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                {/* Option 1: Default Preset */}
-                <button
-                  onClick={loadDefaultPreset}
-                  className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-850 to-slate-900 border border-emerald-500/40 hover:border-emerald-400 transition-all text-right group flex flex-col justify-between space-y-4 hover:shadow-xl hover:shadow-emerald-500/10"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold text-xs">
-                        آماده و کامل
-                      </div>
-                      <Zap className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <h3 className="text-base font-black text-white group-hover:text-emerald-300 transition-colors">
-                      برنامه پیش‌فرض (اردالان کتابچی)
-                    </h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      شامل ۳ جلسه فول‌بادی، کاردیو، دویدن زون ۲، رژیم ۸ وعده‌ای (۲۲۰۰ kcal / ۱۹۲g پروتئین) و نکات ضد آسیب دیسک کمر.
-                    </p>
+              {/* Option 1: AI Plan Generator */}
+              <button
+                onClick={() => {
+                  setIsOnboardingOpen(false);
+                  setIsAIPlanGenOpen(true);
+                }}
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 text-right transition hover:scale-[1.01] shadow-lg shadow-emerald-500/20 flex items-center justify-between group"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-sm">ساخت برنامه اختصاصی با هوش مصنوعی (AI)</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-950 text-emerald-400">
+                      پیشنهادی
+                    </span>
                   </div>
+                  <p className="text-xs text-slate-900 font-medium">
+                    تولید خودکار برنامه ۷ روزه تمرین و رژیم بر اساس قد، وزن، سن و هدف شما
+                  </p>
+                </div>
+                <Wand2 className="w-6 h-6 text-slate-950 flex-shrink-0 group-hover:rotate-12 transition-transform" />
+              </button>
 
-                  <div className="flex items-center gap-1 text-xs text-emerald-400 font-bold pt-2 border-t border-slate-800">
-                    <span>شروع با این برنامه</span>
-                    <ArrowLeft className="w-4 h-4" />
+              {/* Option 2: Default Template Plan */}
+              <button
+                onClick={loadDefaultPreset}
+                className="w-full p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 text-right transition hover:bg-slate-850 flex items-center justify-between group"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-white">بارگذاری الگوی استاندارد بازسازی بدنی</span>
                   </div>
-                </button>
+                  <p className="text-xs text-slate-400">
+                    ۳ جلسه تمرین فول‌بادی، ۳ جلسه کاردیو و شنا، رژیم ۲۲۰۰ کالری
+                  </p>
+                </div>
+                <CheckCircle2 className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+              </button>
 
-                {/* Option 2: Custom Profile */}
-                <button
-                  onClick={() => setMode('custom_form')}
-                  className="p-5 rounded-2xl bg-slate-850/70 border border-slate-700 hover:border-slate-500 transition-all text-right group flex flex-col justify-between space-y-4"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 font-bold text-xs">
-                        شخصی‌سازی
-                      </div>
-                      <User className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <h3 className="text-base font-black text-white group-hover:text-cyan-300 transition-colors">
-                      ثبت مشخصات و اهداف خودم
-                    </h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      وارد کردن قد، وزن، سن، درصد چربی و محاسبه اختصاصی BMR و کالری هدف روزانه برای شما.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-1 text-xs text-cyan-400 font-bold pt-2 border-t border-slate-800">
-                    <span>ورود اطلاعات</span>
-                    <ArrowLeft className="w-4 h-4" />
-                  </div>
-                </button>
-              </div>
+              {/* Option 3: Custom Profile Form */}
+              <button
+                onClick={() => setWizardStep(2)}
+                className="w-full p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 text-right transition flex items-center justify-between group"
+              >
+                <div className="space-y-1">
+                  <span className="font-bold text-sm text-white">ثبت دستی مشخصات و ساخت پروفایل</span>
+                  <p className="text-xs text-slate-400">
+                    ورود قد، وزن، سن، درصد چربی و محاسبه BMR اختصاصی
+                  </p>
+                </div>
+                <ArrowLeft className="w-5 h-5 text-slate-400 flex-shrink-0 group-hover:-translate-x-1 transition-transform" />
+              </button>
             </div>
           ) : (
-            <form onSubmit={handleSaveCustomProfile} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <form onSubmit={handleSaveCustomProfile} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    نام و نام خانوادگی (اختیاری):
-                  </label>
+                  <label className="block text-slate-300 font-bold mb-1">نام و نام خانوادگی:</label>
                   <input
                     type="text"
                     placeholder="مثال: علی رضایی"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    value={customStats.name}
+                    onChange={(e) => setCustomStats({ ...customStats, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    سن (سال):
-                  </label>
+                  <label className="block text-slate-300 font-bold mb-1">سن (سال):</label>
                   <input
-                    type="number"
-                    value={formData.age}
-                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                    type="text"
+                    value={customStats.age}
+                    onChange={(e) => setCustomStats({ ...customStats, age: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    قد (سانتی‌متر):
-                  </label>
+                  <label className="block text-slate-300 font-bold mb-1">قد (سانتی‌متر):</label>
                   <input
-                    type="number"
-                    value={formData.height}
-                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                    type="text"
+                    value={customStats.height}
+                    onChange={(e) => setCustomStats({ ...customStats, height: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    وزن فعلی (کیلوگرم):
-                  </label>
+                  <label className="block text-slate-300 font-bold mb-1">وزن فعلی (کیلوگرم):</label>
                   <input
-                    type="number"
-                    step="0.1"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                    type="text"
+                    value={customStats.weight}
+                    onChange={(e) => setCustomStats({ ...customStats, weight: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    درصد چربی بدن (اختیاری):
-                  </label>
+                  <label className="block text-slate-300 font-bold mb-1">درصد چربی بدنی (اختیاری):</label>
                   <input
-                    type="number"
-                    placeholder="مثال: ۲۵"
-                    value={formData.fatPercentage}
-                    onChange={(e) => setFormData({ ...formData, fatPercentage: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                    type="text"
+                    placeholder="مثال: ۲۰"
+                    value={customStats.fatPercentage}
+                    onChange={(e) => setCustomStats({ ...customStats, fatPercentage: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    ساعت کار پشت میز روزانه:
-                  </label>
+                  <label className="block text-slate-300 font-bold mb-1">ساعت کار روزانه پشت میز:</label>
                   <input
                     type="number"
-                    value={formData.deskHours}
-                    onChange={(e) => setFormData({ ...formData, deskHours: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+                    value={customStats.deskHours}
+                    onChange={(e) => setCustomStats({ ...customStats, deskHours: parseInt(e.target.value) || 8 })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  هدف استراتژیک شما:
-                </label>
+                <label className="block text-slate-300 font-bold mb-1">هدف اصلی شما:</label>
                 <select
-                  value={formData.goal}
-                  onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                  value={customStats.goal}
+                  onChange={(e) => setCustomStats({ ...customStats, goal: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
                 >
                   <option value="کاهش چربی و افزایش توده عضلانی (Body Recomposition)">
-                    کاهش چربی و افزایش توده عضلانی (Body Recomposition)
+                    بازسازی ترکیب بدنی (کاهش چربی همزمان با عضله‌سازی)
                   </option>
-                  <option value="چربی‌سوزی و کاهش وزن سریع">چربی‌سوزی و کاهش وزن سریع</option>
+                  <option value="کاهش وزن و چربی‌سوزی سریع">کاهش وزن و چربی‌سوزی سریع</option>
                   <option value="افزایش حجم عضلانی خالص (Hypertrophy)">افزایش حجم عضلانی خالص (Hypertrophy)</option>
-                  <option value="سلامت مفاصل، اصلاح راستا و تناسب اندام عمومی">سلامت مفاصل، اصلاح راستا و تناسب اندام عمومی</option>
+                  <option value="سلامت مفاصل و تناسب اندام عمومی">سلامت عمومی و مفاصل</option>
                 </select>
               </div>
 
-              <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setMode('choose')}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-bold transition"
+                  onClick={() => setWizardStep(1)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold"
                 >
                   بازگشت
                 </button>
-
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold transition shadow-lg shadow-emerald-500/20"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black transition shadow-lg shadow-emerald-500/20"
                 >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>ذخیره و ورود به برنامه</span>
+                  محاسبه اهداف و ورود به پلتفرم
                 </button>
               </div>
             </form>

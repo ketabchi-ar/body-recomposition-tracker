@@ -13,11 +13,13 @@ import {
   Wand2,
   Bookmark,
   Trash2,
-  ArrowRight
+  ArrowRight,
+  Eye
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { exercisesBank, muscleGroups } from '../data/exercisesBank';
 import { foodsBank, foodCategories } from '../data/foodsBank';
+import { VisualBodyMap } from './VisualBodyMap';
 import { toPersianDigits } from '../utils/jalali';
 
 export const ProgramBuilder = () => {
@@ -33,6 +35,7 @@ export const ProgramBuilder = () => {
   } = useTracker();
 
   const [activeTab, setActiveTab] = useState('exercises'); // 'exercises' | 'foods' | 'days' | 'presets'
+  const [showAnatomyMap, setShowAnatomyMap] = useState(true);
   
   // Exercise Search & Filter
   const [exerciseSearch, setExerciseSearch] = useState('');
@@ -59,7 +62,7 @@ export const ProgramBuilder = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Banner */}
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/70 p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/70 p-5 sm:p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
             <Sparkles className="w-4 h-4" />
@@ -69,13 +72,13 @@ export const ProgramBuilder = () => {
             بانک جامع حرکات ورزشی، تغذیه و کتابخانه الگوها
           </h2>
           <p className="text-xs sm:text-sm text-slate-300">
-            جستجو و مشاهده آموزش‌های ویدیویی، ساخت خودکار برنامه با AI و مدیریت جلسات
+            جستجو و مشاهده آموزش‌های ویدیویی (یوتیوب و آپارات)، فیلتر تصویری عضلات و ساخت هوشمند با AI
           </p>
         </div>
 
         <button
           onClick={() => setIsAIPlanGenOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:scale-105 self-start md:self-center"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:scale-105 self-start md:self-center"
         >
           <Wand2 className="w-4 h-4" />
           <span>ساخت برنامه با هوش مصنوعی</span>
@@ -133,9 +136,33 @@ export const ProgramBuilder = () => {
         </button>
       </div>
 
-      {/* Tab 1: Exercise Bank */}
+      {/* Tab 1: Exercise Bank with Visual Body Map */}
       {activeTab === 'exercises' && (
         <div className="space-y-4">
+          
+          {/* Anatomy Toggle */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Dumbbell className="w-4 h-4 text-emerald-400" />
+              <span>جستجو و فیلتر تصویری عضلات:</span>
+            </h3>
+            <button
+              onClick={() => setShowAnatomyMap(!showAnatomyMap)}
+              className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>{showAnatomyMap ? 'بستن نقشه آناتومی' : 'نمایش نقشه آناتومی عضلات'}</span>
+            </button>
+          </div>
+
+          {/* Interactive Body Map */}
+          {showAnatomyMap && (
+            <VisualBodyMap
+              selectedMuscle={selectedMuscle}
+              onSelectMuscle={(m) => setSelectedMuscle(m)}
+            />
+          )}
+
           {/* Filters & Search */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
@@ -195,11 +222,11 @@ export const ProgramBuilder = () => {
                       <p className="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">{ex.nameEn}</p>
                     </div>
 
-                    {ex.youtubeId && (
+                    {(ex.youtubeId || ex.aparatId) && (
                       <button
                         onClick={() => openVideoModal(ex)}
                         className="p-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 transition flex-shrink-0"
-                        title="مشاهده ویدیو در یوتیوب"
+                        title="مشاهده ویدیو آموزشی"
                       >
                         <Play className="w-4 h-4 fill-current" />
                       </button>
@@ -214,7 +241,7 @@ export const ProgramBuilder = () => {
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
-                  <span>نوع: <strong className="text-slate-200">{ex.metricType === 'time_seconds' ? 'ثانیه‌ای' : 'وزنه + تکرار'}</strong></span>
+                  <span>واحد: <strong className="text-slate-200">{ex.metricType === 'time_seconds' ? 'ثانیه‌ای' : 'وزنه + تکرار'}</strong></span>
                   <span className="text-emerald-400 font-bold">{toPersianDigits(ex.proteinRequired)}g پروتئین ریکاوری</span>
                 </div>
               </div>
@@ -288,7 +315,7 @@ export const ProgramBuilder = () => {
         </div>
       )}
 
-      {/* Tab 3: Custom Days */}
+      {/* Tab 3: Custom Days Editor */}
       {activeTab === 'days' && (
         <div className="space-y-3.5">
           {daysSchedule.map((day, idx) => {
@@ -323,30 +350,30 @@ export const ProgramBuilder = () => {
                   </div>
 
                   <div>
-                    <label className="block text-slate-400 mb-1">ساعت بیداری:</label>
+                    <label className="block text-slate-400 mb-1">ساعت بیداری (Time Picker):</label>
                     <input
-                      type="text"
+                      type="time"
                       value={day.wakeUpTime}
                       onChange={(e) => {
                         const next = [...daysSchedule];
                         next[idx].wakeUpTime = e.target.value;
                         setDaysSchedule(next);
                       }}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-slate-400 mb-1">شروع تمرین:</label>
+                    <label className="block text-slate-400 mb-1">شروع تمرین (Time Picker):</label>
                     <input
-                      type="text"
+                      type="time"
                       value={day.startTime}
                       onChange={(e) => {
                         const next = [...daysSchedule];
                         next[idx].startTime = e.target.value;
                         setDaysSchedule(next);
                       }}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center font-mono"
                     />
                   </div>
                 </div>
@@ -359,31 +386,31 @@ export const ProgramBuilder = () => {
       {/* Tab 4: Reference Presets */}
       {activeTab === 'presets' && (
         <div className="space-y-4">
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/40 space-y-3">
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/40 space-y-3">
             <div className="flex items-center justify-between">
               <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-slate-950">
-                الگوی مرجع تخصصی
+                الگوی استاندارد بازسازی ترکیب بدنی (Recomposition)
               </span>
-              <span className="text-xs text-slate-400">۳ جلسه وزنه + ۳ جلسه کاردیو + ۱ روز شنا</span>
+              <span className="text-xs text-slate-400">۳ جلسه وزنه + ۳ جلسه کاردیو + ۱ روز ریکاوری</span>
             </div>
 
             <h3 className="text-lg font-black text-white">
-              برنامه بازسازی ترکیب بدنی (Body Recomposition) - اردالان کتابچی
+              برنامه استاندارد بازسازی ترکیب بدنی (Body Recomposition Template)
             </h3>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              این برنامه تخصصی شامل ۳ جلسه تمرین فول‌بادی با تمرکز بر ستون فقرات ایمن و پروتکل ضد آسیب دیسک کمر، دویدن ایزی ران زون ۲، کاردیو گروهی، رژیم ۸ وعده‌ای دقیق (۲۲۰۰ کالری / ۱۹۲ گرم پروتئین) و پروتکل ارگونومی ۳۰/۲ است.
+              این برنامه تخصصی شامل ۳ جلسه تمرین فول‌بادی با تاکید بر عضلات محافظ دیسک کمر، دویدن ایزی ران زون ۲، رژیم پروتئینی دقیق و پروتکل ارگونومی ۳۰/۲ برای حفظ سلامت ستون فقرات است.
             </p>
 
             <button
               onClick={() => {
-                if (window.confirm("آیا مایلید این الگوی مرجع بارگذاری شود؟ تمام برنامه شما بر اساس این الگو تنظیم خواهد شد.")) {
+                if (window.confirm("آیا مایلید این الگوی مرجع بارگذاری شود؟")) {
                   loadDefaultPreset();
                 }
               }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20"
             >
-              <span>بارگذاری این الگوی مرجع</span>
+              <span>بارگذاری این الگوی استاندارد</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
