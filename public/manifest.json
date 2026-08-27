@@ -1,0 +1,17 @@
+{
+  "name": "ترکر هوشمند بدنسازی و تغذیه | اردالان کتابچی",
+  "short_name": "FitTracker",
+  "description": "برنامه تخصصی جامع تغذیه، مکمل و ورزش (Body Recomposition)",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
