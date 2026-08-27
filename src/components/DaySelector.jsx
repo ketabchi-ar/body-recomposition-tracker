@@ -1,10 +1,9 @@
 import React from 'react';
-import { Calendar, CheckCircle2, Clock, Zap } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock } from 'lucide-react';
 import { useTracker, getTodayScheduleId } from '../context/TrackerContext';
-import { daysSchedule, workoutsData } from '../data/planData';
 
 export const DaySelector = () => {
-  const { selectedDayId, setSelectedDayId, workoutLogs, activeDateKey } = useTracker();
+  const { selectedDayId, setSelectedDayId, daysSchedule, workouts, workoutLogs, activeDateKey } = useTracker();
   const todayId = getTodayScheduleId();
 
   return (
@@ -21,12 +20,12 @@ export const DaySelector = () => {
         </span>
       </div>
 
-      {/* Days Grid / Horizontal Bar */}
+      {/* Days Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {daysSchedule.map((day) => {
           const isSelected = selectedDayId === day.id;
           const isRealToday = todayId === day.id;
-          const workout = workoutsData[day.workoutId];
+          const workout = workouts[day.workoutId];
 
           // Check how many sets completed for this day
           let totalSets = 0;

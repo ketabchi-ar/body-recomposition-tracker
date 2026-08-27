@@ -6,8 +6,8 @@ import {
   Flame, 
   ShieldCheck, 
   Sparkles, 
-  ExternalLink, 
-  HelpCircle,
+  ArrowRightLeft,
+  Copy,
   Dumbbell
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
@@ -17,7 +17,9 @@ export const ExerciseCard = ({ exercise, index }) => {
     workoutLogs, 
     toggleSetComplete, 
     updateSetValues, 
+    copyFromPreviousSet,
     openVideoModal, 
+    openSubstituteModal,
     startRestTimer,
     activeDateKey 
   } = useTracker();
@@ -32,6 +34,7 @@ export const ExerciseCard = ({ exercise, index }) => {
     }
   }
   const isFullyDone = completedCount === exercise.setsCount;
+  const isTimeBased = exercise.metricType === 'time_seconds';
 
   return (
     <div className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
@@ -70,26 +73,37 @@ export const ExerciseCard = ({ exercise, index }) => {
             </div>
           </div>
 
-          {/* YouTube Video Button */}
-          <div className="flex items-center gap-2 self-end sm:self-start">
+          {/* Action Buttons: YouTube Video + Substitute Finder */}
+          <div className="flex items-center gap-2 self-end sm:self-start flex-wrap">
             <button
-              onClick={() => openVideoModal(exercise)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-red-200 border border-red-500/30 text-xs font-bold transition group"
-              title="مشاهده ویدیوی آموزشی نحوه اجرای صحیح حرکت"
+              onClick={() => openSubstituteModal(exercise, 'exercise')}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-medium transition"
+              title="پیشنهاد حرکات جایگزین هوشمند"
             >
-              <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                <Play className="w-3 h-3 fill-current ml-0.5" />
-              </div>
-              <span>آموزش حرکت در یوتیوب</span>
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <span>جایگزین</span>
             </button>
+
+            {exercise.youtubeId && (
+              <button
+                onClick={() => openVideoModal(exercise)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-red-200 border border-red-500/30 text-xs font-bold transition group"
+                title="مشاهده ویدیوی آموزشی نحوه اجرای صحیح حرکت"
+              >
+                <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                  <Play className="w-3 h-3 fill-current ml-0.5" />
+                </div>
+                <span>آموزش حرکت</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Badges: Sets/Reps + Calories + Protein Rebuild */}
+        {/* Badges */}
         <div className="flex flex-wrap items-center gap-2.5 mt-3 pt-2.5 border-t border-slate-800/60 text-xs">
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
             <Dumbbell className="w-3.5 h-3.5" />
-            <span>ست و تکرار: {exercise.setsReps}</span>
+            <span>{isTimeBased ? `زمان: ${exercise.setsReps}` : `ست و تکرار: ${exercise.setsReps}`}</span>
           </span>
 
           {exercise.calories > 0 && (
@@ -129,7 +143,7 @@ export const ExerciseCard = ({ exercise, index }) => {
         <div className="space-y-2">
           {Array.from({ length: exercise.setsCount }).map((_, setIdx) => {
             const setKey = `${exercise.id}_${setIdx}`;
-            const setData = dayLogs[setKey] || { done: false, weight: '', reps: '' };
+            const setData = dayLogs[setKey] || { done: false, weight: '', reps: '', seconds: '' };
             const isDone = setData.done;
             const suggestedRep = exercise.suggestedReps ? exercise.suggestedReps[setIdx] : '';
 
@@ -156,29 +170,55 @@ export const ExerciseCard = ({ exercise, index }) => {
                   )}
                 </div>
 
-                {/* Inputs: Weight & Reps */}
+                {/* Inputs: Weight & Reps OR Seconds */}
                 <div className="flex items-center gap-2 flex-1 max-w-xs">
-                  <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 flex-1">
-                    <input
-                      type="text"
-                      placeholder="وزنه (kg)"
-                      value={setData.weight || ''}
-                      onChange={(e) => updateSetValues(exercise.id, setIdx, 'weight', e.target.value)}
-                      className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
-                    />
-                    <span className="text-[10px] text-slate-400">kg</span>
-                  </div>
+                  {isTimeBased ? (
+                    <div className="flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 flex-1">
+                      <input
+                        type="number"
+                        placeholder="مدت (ثانیه)"
+                        value={setData.seconds || ''}
+                        onChange={(e) => updateSetValues(exercise.id, setIdx, 'seconds', e.target.value)}
+                        className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
+                      />
+                      <span className="text-[10px] text-slate-400">ثانیه</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 flex-1">
+                        <input
+                          type="text"
+                          placeholder="وزنه (kg)"
+                          value={setData.weight || ''}
+                          onChange={(e) => updateSetValues(exercise.id, setIdx, 'weight', e.target.value)}
+                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
+                        />
+                        <span className="text-[10px] text-slate-400">kg</span>
+                      </div>
 
-                  <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 flex-1">
-                    <input
-                      type="text"
-                      placeholder="تکرار واقعی"
-                      value={setData.reps || ''}
-                      onChange={(e) => updateSetValues(exercise.id, setIdx, 'reps', e.target.value)}
-                      className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
-                    />
-                    <span className="text-[10px] text-slate-400">تکرار</span>
-                  </div>
+                      <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 flex-1">
+                        <input
+                          type="text"
+                          placeholder="تکرار واقعی"
+                          value={setData.reps || ''}
+                          onChange={(e) => updateSetValues(exercise.id, setIdx, 'reps', e.target.value)}
+                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
+                        />
+                        <span className="text-[10px] text-slate-400">تکرار</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Copy from previous set button */}
+                  {setIdx > 0 && (
+                    <button
+                      onClick={() => copyFromPreviousSet(exercise.id, setIdx)}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-emerald-400 border border-slate-700 transition"
+                      title="کپی از ست قبلی"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Actions: Rest Timer Trigger + Complete Checkbox */}
@@ -193,7 +233,13 @@ export const ExerciseCard = ({ exercise, index }) => {
                   </button>
 
                   <button
-                    onClick={() => toggleSetComplete(exercise.id, setIdx, setData.reps || suggestedRep, setData.weight)}
+                    onClick={() => toggleSetComplete(
+                      exercise.id, 
+                      setIdx, 
+                      setData.reps || suggestedRep, 
+                      setData.weight,
+                      setData.seconds
+                    )}
                     className={`flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all ${
                       isDone
                         ? 'bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-md shadow-emerald-500/25'

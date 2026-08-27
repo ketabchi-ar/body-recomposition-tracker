@@ -1,15 +1,24 @@
 import React from 'react';
-import { Dumbbell, CheckCheck, Timer, Sparkles, AlertCircle } from 'lucide-react';
+import { Dumbbell, CheckCheck, Timer, Sparkles, AlertCircle, Zap } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
-import { daysSchedule, workoutsData } from '../data/planData';
 import { DaySelector } from './DaySelector';
 import { DayScheduleBanner } from './DayScheduleBanner';
 import { ExerciseCard } from './ExerciseCard';
 
 export const WorkoutSection = () => {
-  const { selectedDayId, workoutLogs, activeDateKey, toggleSetComplete, startRestTimer } = useTracker();
+  const { 
+    selectedDayId, 
+    daysSchedule, 
+    workouts, 
+    workoutLogs, 
+    activeDateKey, 
+    toggleSetComplete, 
+    startRestTimer,
+    openFocusMode 
+  } = useTracker();
+
   const currentDay = daysSchedule.find(d => d.id === selectedDayId) || daysSchedule[0];
-  const workout = workoutsData[currentDay.workoutId];
+  const workout = workouts[currentDay?.workoutId];
 
   // Calculate total sets & done sets
   let totalSets = 0;
@@ -34,7 +43,13 @@ export const WorkoutSection = () => {
       for (let i = 0; i < ex.setsCount; i++) {
         const isDone = workoutLogs[activeDateKey]?.[`${ex.id}_${i}`]?.done;
         if (!isDone) {
-          toggleSetComplete(ex.id, i, ex.suggestedReps ? ex.suggestedReps[i] : '', '');
+          toggleSetComplete(
+            ex.id, 
+            i, 
+            ex.suggestedReps ? ex.suggestedReps[i] : '', 
+            '', 
+            ex.defaultSeconds || ''
+          );
         }
       }
     });
@@ -69,7 +84,15 @@ export const WorkoutSection = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+          <button
+            onClick={() => openFocusMode(selectedDayId)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-xs font-black transition shadow-lg shadow-amber-500/20 hover:scale-105"
+          >
+            <Zap className="w-4 h-4 fill-current" />
+            <span>شروع تمرین با حالت تمرکز</span>
+          </button>
+
           <button
             onClick={() => startRestTimer(90, 'استراحت بین تمرینات')}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-emerald-400 border border-slate-700 text-xs font-medium transition"

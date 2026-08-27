@@ -1,19 +1,18 @@
 import React from 'react';
 import { Sunrise, Clock, Target, AlertCircle, Sparkles, Dumbbell, Flame } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
-import { daysSchedule, workoutsData } from '../data/planData';
 
 export const DayScheduleBanner = () => {
-  const { selectedDayId } = useTracker();
+  const { selectedDayId, daysSchedule, workouts } = useTracker();
   const currentDay = daysSchedule.find(d => d.id === selectedDayId) || daysSchedule[0];
-  const workout = workoutsData[currentDay.workoutId];
+  const workout = workouts[currentDay?.workoutId];
 
   // Calculate total calories & protein needed for this workout
   let totalCalories = 0;
   let totalProtein = 0;
   if (workout && workout.exercises) {
     workout.exercises.forEach(e => {
-      totalCalories += e.calories || 0;
+      totalCalories += e.calories || (e.caloriesPerSet ? e.caloriesPerSet * (e.setsCount || 3) : 0);
       totalProtein += e.proteinRequired || 0;
     });
   }
@@ -79,7 +78,7 @@ export const DayScheduleBanner = () => {
         </div>
       </div>
 
-      {/* Morning Cardio Specific Note if present */}
+      {/* Morning Cardio Specific Note */}
       {currentDay.morningCardioNote && (
         <div className="mt-3.5 pt-3 border-t border-slate-800/80 flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs">
           <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />

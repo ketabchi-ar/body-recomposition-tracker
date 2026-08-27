@@ -1,10 +1,9 @@
 import React from 'react';
-import { CalendarDays, ArrowRight, Sunrise, Clock, Target, Dumbbell, Activity, ShieldAlert } from 'lucide-react';
+import { CalendarDays, ArrowRight, Sunrise, Clock, Target } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
-import { daysSchedule, workoutsData } from '../data/planData';
 
 export const WeeklyScheduleSection = () => {
-  const { setSelectedDayId, setActiveTab } = useTracker();
+  const { setSelectedDayId, setActiveTab, daysSchedule, workouts } = useTracker();
 
   const handleSelectDay = (dayId) => {
     setSelectedDayId(dayId);
@@ -23,15 +22,14 @@ export const WeeklyScheduleSection = () => {
           ساختار هوشمند هفتگی هماهنگ با ساعت بیولوژیک و کار
         </h2>
         <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
-          با توجه به زمان بیداری شما (۰۵:۰۰ الی ۰۵:۴۵) و ۱۰ ساعت کار پشت‌میزی، برنامه به‌گونه‌ای طراحی شده که دوشنبه و چهارشنبه کاردیو سنگین صبحگاهی با وزنه عصرگاهی تداخل نداشته باشد و ریکاوری بافت عضلانی در بالاترین سطح انجام شود.
+          برنامه به‌گونه‌ای تنظیم شده که روزهای کاردیو سنگین با روزهای وزنه عصرگاهی تداخل نداشته باشند و ریکاوری بافت عضلانی در بالاترین سطح انجام گیرد.
         </p>
       </div>
 
       {/* Days Table / Cards */}
       <div className="space-y-3.5">
-        {daysSchedule.map((day, idx) => {
-          const workout = workoutsData[day.workoutId];
-          const exerciseCount = workout?.exercises?.length || 0;
+        {daysSchedule.map((day) => {
+          const workout = workouts[day.workoutId];
 
           return (
             <div
@@ -45,7 +43,7 @@ export const WeeklyScheduleSection = () => {
                     {day.dayName}
                   </span>
                   <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                    {day.tag}
+                    {day.tag || day.type}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
                     {day.category}
@@ -79,7 +77,7 @@ export const WeeklyScheduleSection = () => {
                   onClick={() => handleSelectDay(day.id)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-500/30 text-xs font-bold transition shadow-sm"
                 >
-                  <span>مشاهده حرکات و تیک زدن</span>
+                  <span>مشاهده حرکات و ثبت ست‌ها</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

@@ -5,20 +5,26 @@ import {
   Utensils, 
   Droplets, 
   Flame, 
-  CheckCircle2, 
   TrendingUp, 
   Award, 
   Download, 
-  Upload,
-  RotateCcw
+  Bot,
+  Cloud,
+  Sparkles
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
-import { userProfile, daysSchedule, workoutsData, dietMealsData } from '../data/planData';
 
 export const ProgressDashboard = () => {
-  const { workoutLogs, mealLogs, waterLogs, activeDateKey } = useTracker();
+  const { 
+    workoutLogs, 
+    mealLogs, 
+    waterLogs, 
+    profile, 
+    exportFullBackup, 
+    setAiCoachModal, 
+    setIsGDriveModalOpen 
+  } = useTracker();
 
-  // Calculate stats
   const totalDaysTracked = Object.keys(workoutLogs).length || 1;
   
   // Total sets completed overall
@@ -43,43 +49,30 @@ export const ProgressDashboard = () => {
     totalWaterLiters += (amount || 0) / 1000;
   });
 
-  // Today specific completion
-  const todayWorkoutCount = Object.values(workoutLogs[activeDateKey] || {}).filter(i => i?.done).length;
-  const todayMealCount = Object.values(mealLogs[activeDateKey] || {}).filter(Boolean).length;
-  const todayWater = waterLogs[activeDateKey] || 0;
-
-  // Export JSON backup
-  const handleExportData = () => {
-    const data = {
-      userProfile,
-      workoutLogs,
-      mealLogs,
-      waterLogs,
-      exportedAt: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ardalan-fitness-backup-${activeDateKey}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Banner */}
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/70 p-5 shadow-xl">
-        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
-          <Activity className="w-4 h-4" />
-          <span>داشبورد وضعیت، آمار و پیشرفت برنامه بازسازی بدنی</span>
+      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/70 p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
+            <Activity className="w-4 h-4" />
+            <span>داشبورد وضعیت، آمار و پیشرفت برنامه</span>
+          </div>
+          <h2 className="text-xl font-black text-white">
+            گزارش پایبندی به رژیم، مکمل‌ها و تمرینات ({profile.name || 'ورزشکار'})
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300">
+            هدف: {profile.goal}
+          </p>
         </div>
-        <h2 className="text-xl font-black text-white">
-          گزارش پایبندی به رژیم، مکمل‌ها و تمرینات
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-300 mt-2">
-          هدف استراتژیک: کاهش ۱۱ کیلوگرم چربی + افزایش توده عضلانی با تمرینات بدون فشار دیسک کمر
-        </p>
+
+        <button
+          onClick={() => setAiCoachModal({ isOpen: true, initialTab: 'daily' })}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:scale-105 self-start md:self-center"
+        >
+          <Bot className="w-4 h-4" />
+          <span>تحلیل پیشرفته با هوش مصنوعی</span>
+        </button>
       </div>
 
       {/* 4 Stat Overview Cards */}
@@ -129,46 +122,56 @@ export const ProgressDashboard = () => {
       <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-md space-y-4">
         <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-emerald-400" />
-          <span>مقایسه شاخص‌های هدف و مبنا (InBody Baseline vs Target):</span>
+          <span>مشخصات و اهداف پروفایل:</span>
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-center">
           <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800">
-            <div className="text-xs text-slate-400">وزن فعلی / هدف کاهش چربی</div>
-            <div className="text-base font-black text-white mt-1">۷۱.۸ kg</div>
-            <div className="text-[11px] text-emerald-400 mt-1 font-semibold">🎯 هدف: -۱۱ kg چربی خالص</div>
+            <div className="text-xs text-slate-400">وزن فعلی</div>
+            <div className="text-base font-black text-white mt-1">{profile.weight}</div>
+            <div className="text-[11px] text-emerald-400 mt-1 font-semibold">قد: {profile.height}</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800">
             <div className="text-xs text-slate-400">درصد چربی بدنی</div>
-            <div className="text-base font-black text-rose-400 mt-1">۳۰.۴٪</div>
-            <div className="text-[11px] text-emerald-400 mt-1 font-semibold">🎯 هدف: زیر ۱۸٪ با رژیم پروتئین بالا</div>
+            <div className="text-base font-black text-rose-400 mt-1">{profile.fatPercentage}</div>
+            <div className="text-[11px] text-emerald-400 mt-1 font-semibold">توده عضلانی: {profile.muscleMass}</div>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800">
-            <div className="text-xs text-slate-400">توده عضلانی اسکلتی</div>
-            <div className="text-base font-black text-cyan-400 mt-1">۲۷.۳ kg</div>
-            <div className="text-[11px] text-emerald-400 mt-1 font-semibold">🎯 هدف: افزایش با ۳ جلسه فول‌بادی</div>
+            <div className="text-xs text-slate-400">هدف کالری و پروتئین روزانه</div>
+            <div className="text-base font-black text-cyan-400 mt-1">{profile.dailyTargetCalories} kcal</div>
+            <div className="text-[11px] text-emerald-400 mt-1 font-semibold">پروتئین هدف: {profile.dailyTargetProtein}g</div>
           </div>
         </div>
       </div>
 
-      {/* Data Backup & Restore */}
+      {/* Cloud & Local Backup Row */}
       <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="text-sm font-bold text-white">پشتیبان‌گیری از داده‌ها (Backup & LocalStorage)</h3>
+          <h3 className="text-sm font-bold text-white">پشتیبان‌گیری از داده‌ها و همگام‌سازی</h3>
           <p className="text-xs text-slate-400">
-            تمام تیک‌ها و سوابق وزنه‌ها به صورت خودکار در مرورگر شما ذخیره می‌شوند. می‌توانید فایل پشتیبان دانلود کنید.
+            داده‌ها در حافظه مرورگر ذخیره هستند. می‌توانید فایل JSON دانلود کرده یا با Google Drive همگام نمایید.
           </p>
         </div>
 
-        <button
-          onClick={handleExportData}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition shadow-sm"
-        >
-          <Download className="w-4 h-4 text-emerald-400" />
-          <span>دانلود فایل پشتیبان JSON</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsGDriveModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 text-xs font-bold transition"
+          >
+            <Cloud className="w-4 h-4" />
+            <span>اتصال به Google Drive</span>
+          </button>
+
+          <button
+            onClick={exportFullBackup}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition"
+          >
+            <Download className="w-4 h-4 text-emerald-400" />
+            <span>دانلود فایل JSON</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -16,22 +16,29 @@ import {
   Egg,
   CheckCheck,
   Plus,
-  RotateCcw
+  RotateCcw,
+  MessageSquare,
+  ArrowRightLeft
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
-import { dietMealsData, userProfile } from '../data/planData';
 
 export const DietSection = () => {
   const { 
+    dietMeals, 
     mealLogs, 
     toggleMealComplete, 
+    mealNotes, 
+    updateMealNote, 
+    openSubstituteModal, 
     waterLogs, 
     addWater, 
     resetWater, 
-    activeDateKey 
+    activeDateKey, 
+    profile 
   } = useTracker();
 
   const dayMealLogs = mealLogs[activeDateKey] || {};
+  const dayMealNotes = mealNotes[activeDateKey] || {};
   const currentWater = waterLogs[activeDateKey] || 0;
 
   // Calculate consumed calories & protein based on checked meals
@@ -39,7 +46,7 @@ export const DietSection = () => {
   let consumedProtein = 0;
   let completedMealsCount = 0;
 
-  dietMealsData.forEach(meal => {
+  dietMeals.forEach(meal => {
     if (dayMealLogs[meal.id]) {
       consumedCalories += meal.calories;
       consumedProtein += meal.protein;
@@ -47,16 +54,16 @@ export const DietSection = () => {
     }
   });
 
-  const targetCalories = 2200;
-  const targetProtein = 192;
-  const targetWater = 2500; // ml
+  const targetCalories = parseInt(profile.dailyTargetCalories) || 2200;
+  const targetProtein = parseInt(profile.dailyTargetProtein) || 192;
+  const targetWater = (profile.waterTargetLiters || 2.5) * 1000; // ml
 
   const caloriesPercent = Math.min(100, Math.round((consumedCalories / targetCalories) * 100));
   const proteinPercent = Math.min(100, Math.round((consumedProtein / targetProtein) * 100));
   const waterPercent = Math.min(100, Math.round((currentWater / targetWater) * 100));
 
   const markAllMealsDone = () => {
-    dietMealsData.forEach(meal => {
+    dietMeals.forEach(meal => {
       if (!dayMealLogs[meal.id]) {
         toggleMealComplete(meal.id);
       }
@@ -85,10 +92,10 @@ export const DietSection = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                Body Recomposition Nutrition
+                {profile.goal}
               </span>
               <span className="text-xs text-slate-400">
-                پروتئین هدف: ۲.۱ - ۲.۳ گرم به ازای هر کیلو وزن
+                پروتئین هدف: {profile.dailyTargetProtein} گرم
               </span>
             </div>
             <h2 className="text-xl font-black text-white mt-1">
@@ -96,7 +103,7 @@ export const DietSection = () => {
             </h2>
           </div>
 
-          {completedMealsCount < dietMealsData.length && (
+          {completedMealsCount < dietMeals.length && (
             <button
               onClick={markAllMealsDone}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 text-xs font-bold transition self-start md:self-center"
@@ -161,7 +168,7 @@ export const DietSection = () => {
                 مصرف آب روزانه
               </span>
               <span className="text-xs font-bold text-sky-300">
-                {(currentWater / 1000).toFixed(1)} / {userProfile.waterTargetLiters} لیتر
+                {(currentWater / 1000).toFixed(1)} / {profile.waterTargetLiters || 2.5} لیتر
               </span>
             </div>
             <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -186,10 +193,10 @@ export const DietSection = () => {
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">
-                ردیاب نوشیدن آب در طول ۱۰ ساعت کار پشت میز
+                ردیاب نوشیدن آب در طول روز و کار پشت میز
               </h3>
               <p className="text-xs text-slate-400">
-                هدف: حداقل ۲.۵ لیتر (۱۰ لیوان ۲۵۰ میلی‌لیتری) جهت جلوگیری از خشکی مفاصل و کندی چربی‌سوزی
+                هدف: حداقل {profile.waterTargetLiters || 2.5} لیتر جهت جلوگیری از خشکی مفاصل و کندی چربی‌سوزی
               </p>
             </div>
           </div>
@@ -222,29 +229,17 @@ export const DietSection = () => {
         </div>
       </div>
 
-      {/* Morning Cardio Diet Rule Notice */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 to-slate-900 border border-amber-500/30 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-        <div className="space-y-1 text-xs text-slate-200 leading-relaxed">
-          <strong className="text-amber-300 font-bold block text-sm">
-            💡 دستورالعمل روزهای دویدن و کاردیو صبح (شنبه، دوشنبه، چهارشنبه):
-          </strong>
-          <p>
-            در روزهایی که ۵:۴۵ یا ۶:۳۰ تمرین کاردیو دارید، قبل از شروع صرفاً <strong>نوشیدنی ناشتا + ۴ عدد BCAA + قرص کافئین</strong> را میل نمایید. صبحانه اصلی (تخم‌مرغ و عدسی) را بلافاصله پس از اتمام تمرین و دوش گرفتن میل کنید.
-          </p>
-        </div>
-      </div>
-
       {/* Meals List */}
       <div className="space-y-3.5">
         <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
           <Utensils className="w-4 h-4 text-emerald-400" />
-          <span>جدول وعده‌ها و زمان‌بندی مکمل‌ها (۸ وعده روزانه):</span>
+          <span>جدول وعده‌ها و زمان‌بندی مکمل‌ها ({dietMeals.length} وعده روزانه):</span>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {dietMealsData.map((meal, index) => {
+          {dietMeals.map((meal) => {
             const isDone = Boolean(dayMealLogs[meal.id]);
+            const noteValue = dayMealNotes[meal.id] || '';
 
             return (
               <div
@@ -275,20 +270,30 @@ export const DietSection = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => toggleMealComplete(meal.id)}
-                      className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                        isDone
-                          ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                          : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700'
-                      }`}
-                    >
-                      <Check className={`w-4 h-4 ${isDone ? 'stroke-[3]' : 'opacity-30'}`} />
-                      <span>{isDone ? 'مصرف شد' : 'تیک مصرف'}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openSubstituteModal(meal, 'food')}
+                        className="p-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs transition"
+                        title="جایگزین‌های این وعده"
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => toggleMealComplete(meal.id)}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          isDone
+                            ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                            : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700'
+                        }`}
+                      >
+                        <Check className={`w-4 h-4 ${isDone ? 'stroke-[3]' : 'opacity-30'}`} />
+                        <span>{isDone ? 'مصرف شد' : 'تیک مصرف'}</span>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Subtitle / Recipe info */}
+                  {/* Subtitle */}
                   {meal.subtitle && (
                     <p className="text-xs font-semibold text-slate-300 mb-2">
                       {meal.subtitle}
@@ -305,12 +310,20 @@ export const DietSection = () => {
                     ))}
                   </ul>
 
-                  {/* Meal Note */}
-                  {meal.notes && (
-                    <p className="text-[11px] text-slate-400 bg-slate-850/40 p-2 rounded-lg border border-slate-800 mb-3">
-                      💡 {meal.notes}
-                    </p>
-                  )}
+                  {/* Meal Note / Deviation Input */}
+                  <div className="mb-3">
+                    <div className="flex items-center gap-1 text-[11px] text-slate-400 mb-1">
+                      <MessageSquare className="w-3 h-3 text-cyan-400" />
+                      <span>یادداشت / گزارش تغییرات این وعده (برای بررسی AI):</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="مثال: به جای فیله، ۱۰۰ گرم ماهی تن خوردم..."
+                      value={noteValue}
+                      onChange={(e) => updateMealNote(meal.id, e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
                 </div>
 
                 {/* Bottom Macro Pills */}

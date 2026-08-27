@@ -4,9 +4,16 @@ import { Header } from './components/Header';
 import { WorkoutSection } from './components/WorkoutSection';
 import { DietSection } from './components/DietSection';
 import { WeeklyScheduleSection } from './components/WeeklyScheduleSection';
+import { ProgramBuilder } from './components/ProgramBuilder';
 import { ErgonomicsSection } from './components/ErgonomicsSection';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { VideoModal } from './components/VideoModal';
+import { SubstituteModal } from './components/SubstituteModal';
+import { AICoachModal } from './components/AICoachModal';
+import { FocusModeModal } from './components/FocusModeModal';
+import { GoogleDriveSyncModal } from './components/GoogleDriveSyncModal';
+import { SettingsModal } from './components/SettingsModal';
+import { OnboardingModal } from './components/OnboardingModal';
 import { RestTimerFloat } from './components/RestTimerFloat';
 
 const MainContent = () => {
@@ -17,6 +24,7 @@ const MainContent = () => {
       {activeTab === 'workout' && <WorkoutSection />}
       {activeTab === 'diet' && <DietSection />}
       {activeTab === 'schedule' && <WeeklyScheduleSection />}
+      {activeTab === 'builder' && <ProgramBuilder />}
       {activeTab === 'ergo' && <ErgonomicsSection />}
       {activeTab === 'stats' && <ProgressDashboard />}
     </main>
@@ -31,7 +39,15 @@ export function App() {
         <div className="flex-1">
           <MainContent />
         </div>
+        
+        {/* Modals & Overlays */}
         <VideoModal />
+        <SubstituteModal />
+        <AICoachModal />
+        <FocusModeModal />
+        <GoogleDriveSyncModal />
+        <SettingsModal />
+        <OnboardingModal />
         <RestTimerFloat />
       </div>
     </TrackerProvider>

@@ -1,28 +1,75 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { sounds } from '../utils/audio';
-import { daysSchedule, workoutsData, dietMealsData } from '../data/planData';
+import { daysSchedule as initialDays, workoutsData as initialWorkouts, dietMealsData as initialMeals, userProfile as defaultProfile } from '../data/planData';
+import { exercisesBank } from '../data/exercisesBank';
+import { foodsBank } from '../data/foodsBank';
+import { getLocalExerciseSubstitutes, getLocalFoodSubstitutes } from '../utils/aiService';
+import { googleDrive } from '../utils/googleDrive';
 
 const TrackerContext = createContext();
 
-// Helper to get formatted Date string YYYY-MM-DD
 export const getTodayKey = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
-// Helper to get today's day schedule ID
 export const getTodayScheduleId = () => {
   const dayIndex = new Date().getDay(); // 0 = Sunday, 6 = Saturday
-  const found = daysSchedule.find(d => d.dayIndex === dayIndex);
+  const found = initialDays.find(d => d.dayIndex === dayIndex);
   return found ? found.id : 'sunday';
 };
 
 export const TrackerProvider = ({ children }) => {
+  // Profile State
+  const [profile, setProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fit_tracker_user_profile');
+      return saved ? JSON.parse(saved) : defaultProfile;
+    } catch {
+      return defaultProfile;
+    }
+  });
+
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(() => {
+    return localStorage.getItem('fit_tracker_onboarding_done') === 'true';
+  });
+
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+
+  // Selected Day & Active Date
   const [selectedDayId, setSelectedDayId] = useState(getTodayScheduleId);
   const [activeDateKey, setActiveDateKey] = useState(getTodayKey);
 
-  // Completed sets: { [dateKey]: { [setKey]: { done: boolean, weight: number|string, reps: number|string } } }
+  // Custom/Dynamic Plan Data
+  const [daysSchedule, setDaysSchedule] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fit_tracker_custom_days');
+      return saved ? JSON.parse(saved) : initialDays;
+    } catch {
+      return initialDays;
+    }
+  });
+
+  const [workouts, setWorkouts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fit_tracker_custom_workouts');
+      return saved ? JSON.parse(saved) : initialWorkouts;
+    } catch {
+      return initialWorkouts;
+    }
+  });
+
+  const [dietMeals, setDietMeals] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fit_tracker_custom_meals');
+      return saved ? JSON.parse(saved) : initialMeals;
+    } catch {
+      return initialMeals;
+    }
+  });
+
+  // Workout Logs: { [dateKey]: { [exerciseId_setIdx]: { done: boolean, weight: string, reps: string, seconds: string } } }
   const [workoutLogs, setWorkoutLogs] = useState(() => {
     try {
       const saved = localStorage.getItem('fit_tracker_workout_logs');
@@ -32,7 +79,7 @@ export const TrackerProvider = ({ children }) => {
     }
   });
 
-  // Completed meals: { [dateKey]: { [mealId]: boolean } }
+  // Meal Logs: { [dateKey]: { [mealId]: boolean } }
   const [mealLogs, setMealLogs] = useState(() => {
     try {
       const saved = localStorage.getItem('fit_tracker_meal_logs');
@@ -42,7 +89,17 @@ export const TrackerProvider = ({ children }) => {
     }
   });
 
-  // Water intake in ml: { [dateKey]: number }
+  // Meal Notes/Deviations: { [dateKey]: { [mealId]: string } }
+  const [mealNotes, setMealNotes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fit_tracker_meal_notes');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Water Logs (ml): { [dateKey]: number }
   const [waterLogs, setWaterLogs] = useState(() => {
     try {
       const saved = localStorage.getItem('fit_tracker_water_logs');
@@ -52,7 +109,12 @@ export const TrackerProvider = ({ children }) => {
     }
   });
 
-  // Active YouTube video modal
+  // Gemini API Key
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    return localStorage.getItem('fit_tracker_gemini_api_key') || '';
+  });
+
+  // Modals
   const [videoModal, setVideoModal] = useState({
     isOpen: false,
     title: '',
@@ -62,6 +124,21 @@ export const TrackerProvider = ({ children }) => {
     calories: 0,
     protein: 0
   });
+
+  const [substituteModal, setSubstituteModal] = useState({
+    isOpen: false,
+    type: 'exercise', // 'exercise' | 'food'
+    item: null,
+    substitutes: []
+  });
+
+  const [aiCoachModal, setAiCoachModal] = useState({
+    isOpen: false,
+    initialTab: 'daily' // 'daily' | 'weekly' | 'chat'
+  });
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isGDriveModalOpen, setIsGDriveModalOpen] = useState(false);
 
   // Rest Timer State
   const [restTimer, setRestTimer] = useState({
@@ -74,15 +151,44 @@ export const TrackerProvider = ({ children }) => {
   // Ergonomics 30/2 Timer State
   const [ergoTimer, setErgoTimer] = useState({
     isRunning: false,
-    phase: 'work', // 'work' (30min) or 'break' (2min)
+    phase: 'work',
     duration: 30 * 60,
     timeLeft: 30 * 60
   });
 
-  // Active Tab in UI: 'schedule' | 'workout' | 'diet' | 'stats' | 'ergo'
+  // Focus Mode State
+  const [focusMode, setFocusMode] = useState({
+    isOpen: false,
+    currentDayId: getTodayScheduleId(),
+    exerciseIndex: 0,
+    sessionElapsedSeconds: 0,
+    isSessionRunning: false
+  });
+
+  // Active Main Tab: 'workout' | 'diet' | 'schedule' | 'builder' | 'ergo' | 'stats'
   const [activeTab, setActiveTab] = useState('workout');
 
-  // Persistence
+  // Persistence Effects
+  useEffect(() => {
+    localStorage.setItem('fit_tracker_user_profile', JSON.stringify(profile));
+  }, [profile]);
+
+  useEffect(() => {
+    localStorage.setItem('fit_tracker_onboarding_done', String(hasCompletedOnboarding));
+  }, [hasCompletedOnboarding]);
+
+  useEffect(() => {
+    localStorage.setItem('fit_tracker_custom_days', JSON.stringify(daysSchedule));
+  }, [daysSchedule]);
+
+  useEffect(() => {
+    localStorage.setItem('fit_tracker_custom_workouts', JSON.stringify(workouts));
+  }, [workouts]);
+
+  useEffect(() => {
+    localStorage.setItem('fit_tracker_custom_meals', JSON.stringify(dietMeals));
+  }, [dietMeals]);
+
   useEffect(() => {
     localStorage.setItem('fit_tracker_workout_logs', JSON.stringify(workoutLogs));
   }, [workoutLogs]);
@@ -92,10 +198,25 @@ export const TrackerProvider = ({ children }) => {
   }, [mealLogs]);
 
   useEffect(() => {
+    localStorage.setItem('fit_tracker_meal_notes', JSON.stringify(mealNotes));
+  }, [mealNotes]);
+
+  useEffect(() => {
     localStorage.setItem('fit_tracker_water_logs', JSON.stringify(waterLogs));
   }, [waterLogs]);
 
-  // Rest Timer Interval
+  useEffect(() => {
+    localStorage.setItem('fit_tracker_gemini_api_key', geminiApiKey);
+  }, [geminiApiKey]);
+
+  // First-time onboarding trigger
+  useEffect(() => {
+    if (!hasCompletedOnboarding) {
+      setIsOnboardingOpen(true);
+    }
+  }, [hasCompletedOnboarding]);
+
+  // Rest Timer Interval with auto-dismiss
   useEffect(() => {
     let interval = null;
     if (restTimer.isRunning && restTimer.timeLeft > 0) {
@@ -107,51 +228,35 @@ export const TrackerProvider = ({ children }) => {
       }, 1000);
     } else if (restTimer.isRunning && restTimer.timeLeft <= 0) {
       sounds.playTimerAlert();
-      setRestTimer(prev => ({ ...prev, isRunning: false }));
+      // Auto dismiss after 2 seconds
+      setTimeout(() => {
+        setRestTimer(prev => ({ ...prev, isRunning: false }));
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [restTimer.isRunning, restTimer.timeLeft]);
 
-  // Ergonomics Timer Interval
+  // Focus Mode Stopwatch
   useEffect(() => {
     let interval = null;
-    if (ergoTimer.isRunning && ergoTimer.timeLeft > 0) {
+    if (focusMode.isOpen && focusMode.isSessionRunning) {
       interval = setInterval(() => {
-        setErgoTimer(prev => ({
+        setFocusMode(prev => ({
           ...prev,
-          timeLeft: prev.timeLeft - 1
+          sessionElapsedSeconds: prev.sessionElapsedSeconds + 1
         }));
       }, 1000);
-    } else if (ergoTimer.isRunning && ergoTimer.timeLeft <= 0) {
-      sounds.playCompletionChime();
-      if (ergoTimer.phase === 'work') {
-        // Switch to break 2 min
-        setErgoTimer({
-          isRunning: true,
-          phase: 'break',
-          duration: 2 * 60,
-          timeLeft: 2 * 60
-        });
-      } else {
-        // Switch back to work 30 min
-        setErgoTimer({
-          isRunning: true,
-          phase: 'work',
-          duration: 30 * 60,
-          timeLeft: 30 * 60
-        });
-      }
     }
     return () => clearInterval(interval);
-  }, [ergoTimer.isRunning, ergoTimer.timeLeft, ergoTimer.phase]);
+  }, [focusMode.isOpen, focusMode.isSessionRunning]);
 
   // Actions
-  const toggleSetComplete = (exerciseId, setIndex, currentReps = '', currentWeight = '') => {
+  const toggleSetComplete = (exerciseId, setIndex, currentReps = '', currentWeight = '', currentSeconds = '') => {
     sounds.playBeep(700, 'sine', 0.08);
     setWorkoutLogs(prev => {
       const dayLogs = prev[activeDateKey] || {};
       const key = `${exerciseId}_${setIndex}`;
-      const current = dayLogs[key] || { done: false, weight: currentWeight, reps: currentReps };
+      const current = dayLogs[key] || { done: false, weight: currentWeight, reps: currentReps, seconds: currentSeconds };
       const nextDone = !current.done;
 
       const updated = {
@@ -162,14 +267,18 @@ export const TrackerProvider = ({ children }) => {
             ...current,
             done: nextDone,
             weight: current.weight || currentWeight,
-            reps: current.reps || currentReps
+            reps: current.reps || currentReps,
+            seconds: current.seconds || currentSeconds
           }
         }
       };
 
       if (nextDone) {
-        // trigger gentle confetti if last set
         checkIfAllDoneAndCelebrate(updated);
+        // If in focus mode, auto trigger rest timer
+        if (focusMode.isOpen) {
+          startRestTimer(60, 'استراحت بین ست‌ها');
+        }
       }
 
       return updated;
@@ -180,7 +289,7 @@ export const TrackerProvider = ({ children }) => {
     setWorkoutLogs(prev => {
       const dayLogs = prev[activeDateKey] || {};
       const key = `${exerciseId}_${setIndex}`;
-      const current = dayLogs[key] || { done: false, weight: '', reps: '' };
+      const current = dayLogs[key] || { done: false, weight: '', reps: '', seconds: '' };
       return {
         ...prev,
         [activeDateKey]: {
@@ -188,6 +297,34 @@ export const TrackerProvider = ({ children }) => {
           [key]: {
             ...current,
             [field]: value
+          }
+        }
+      };
+    });
+  };
+
+  // Copy values from previous set (e.g. Set 2 copies from Set 1)
+  const copyFromPreviousSet = (exerciseId, setIndex) => {
+    if (setIndex <= 0) return;
+    const dayLogs = workoutLogs[activeDateKey] || {};
+    const prevKey = `${exerciseId}_${setIndex - 1}`;
+    const prevSet = dayLogs[prevKey];
+    if (!prevSet) return;
+
+    sounds.playBeep(800, 'sine', 0.05);
+    setWorkoutLogs(prev => {
+      const currentLogs = prev[activeDateKey] || {};
+      const currentKey = `${exerciseId}_${setIndex}`;
+      const current = currentLogs[currentKey] || { done: false, weight: '', reps: '', seconds: '' };
+      return {
+        ...prev,
+        [activeDateKey]: {
+          ...currentLogs,
+          [currentKey]: {
+            ...current,
+            weight: prevSet.weight || current.weight,
+            reps: prevSet.reps || current.reps,
+            seconds: prevSet.seconds || current.seconds
           }
         }
       };
@@ -208,14 +345,23 @@ export const TrackerProvider = ({ children }) => {
       };
 
       if (next) {
-        // check total meals completed
         const completedCount = Object.values(updated[activeDateKey] || {}).filter(Boolean).length;
-        if (completedCount === dietMealsData.length) {
-          triggerCelebration("تکمیل تمام وعده‌ها و مکمل‌های روزانه! پروتئین و تغذیه کامل شد 🚀");
+        if (completedCount === dietMeals.length) {
+          triggerCelebration("تمام وعده‌ها و مکمل‌های روزانه مصرف شدند! 🥗💪");
         }
       }
       return updated;
     });
+  };
+
+  const updateMealNote = (mealId, note) => {
+    setMealNotes(prev => ({
+      ...prev,
+      [activeDateKey]: {
+        ...(prev[activeDateKey] || {}),
+        [mealId]: note
+      }
+    }));
   };
 
   const addWater = (amountMl = 250) => {
@@ -224,7 +370,7 @@ export const TrackerProvider = ({ children }) => {
       const current = prev[activeDateKey] || 0;
       const next = Math.min(5000, current + amountMl);
       if (current < 2500 && next >= 2500) {
-        triggerCelebration("تبریک! هدف مصرف ۲.۵ لیتر آب روزانه تکمیل شد 💧");
+        triggerCelebration("هدف ۲.۵ لیتر آب روزانه تکمیل شد 💧");
       }
       return {
         ...prev,
@@ -254,7 +400,7 @@ export const TrackerProvider = ({ children }) => {
   const checkIfAllDoneAndCelebrate = (logs) => {
     const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
     if (!selectedDay) return;
-    const workout = workoutsData[selectedDay.workoutId];
+    const workout = workouts[selectedDay.workoutId];
     if (!workout || !workout.exercises) return;
 
     const dayLogs = logs[activeDateKey] || {};
@@ -296,7 +442,7 @@ export const TrackerProvider = ({ children }) => {
       nameEn: exercise.nameEn,
       youtubeId: exercise.youtubeId,
       biomechanics: exercise.biomechanics,
-      calories: exercise.calories,
+      calories: exercise.calories || (exercise.caloriesPerSet ? exercise.caloriesPerSet * (exercise.setsCount || 3) : 0),
       protein: exercise.proteinRequired
     });
   };
@@ -305,14 +451,92 @@ export const TrackerProvider = ({ children }) => {
     setVideoModal(prev => ({ ...prev, isOpen: false }));
   };
 
+  // Open substitute finder modal
+  const openSubstituteModal = (item, type = 'exercise') => {
+    let substitutes = [];
+    if (type === 'exercise') {
+      substitutes = getLocalExerciseSubstitutes(item);
+    } else {
+      substitutes = getLocalFoodSubstitutes(item.title || item.nameFa, item.subtitle || '');
+    }
+    setSubstituteModal({
+      isOpen: true,
+      type,
+      item,
+      substitutes
+    });
+  };
+
+  const closeSubstituteModal = () => {
+    setSubstituteModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Replace exercise in current workout
+  const replaceExerciseInWorkout = (targetExerciseId, newExercise) => {
+    setWorkouts(prev => {
+      const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
+      if (!selectedDay) return prev;
+      const workout = prev[selectedDay.workoutId];
+      if (!workout) return prev;
+
+      const updatedExercises = workout.exercises.map(ex => {
+        if (ex.id === targetExerciseId) {
+          return {
+            ...ex,
+            id: newExercise.id,
+            nameFa: newExercise.nameFa,
+            nameEn: newExercise.nameEn,
+            targetMuscle: newExercise.targetMuscle,
+            metricType: newExercise.metricType || 'weight_reps',
+            biomechanics: newExercise.biomechanics,
+            youtubeId: newExercise.youtubeId,
+            suggestedReps: newExercise.suggestedReps || [12, 10, 8, 8],
+            defaultSeconds: newExercise.defaultSeconds || 30
+          };
+        }
+        return ex;
+      });
+
+      return {
+        ...prev,
+        [selectedDay.workoutId]: {
+          ...workout,
+          exercises: updatedExercises
+        }
+      };
+    });
+    closeSubstituteModal();
+  };
+
+  // Focus Mode Controls
+  const openFocusMode = (dayId = selectedDayId) => {
+    setFocusMode({
+      isOpen: true,
+      currentDayId: dayId,
+      exerciseIndex: 0,
+      sessionElapsedSeconds: 0,
+      isSessionRunning: true
+    });
+  };
+
+  const closeFocusMode = () => {
+    setFocusMode(prev => ({ ...prev, isOpen: false, isSessionRunning: false }));
+  };
+
+  // Reset Today
   const resetTodayLogs = () => {
-    if (window.confirm("آیا مایلید تمام تیک‌ها و لاگ‌های روز جاری پاکسازی شوند؟")) {
+    if (window.confirm("آیا مایلید تمام تیک‌ها و یادداشت‌های روز جاری پاکسازی شوند؟")) {
       setWorkoutLogs(prev => {
         const next = { ...prev };
         delete next[activeDateKey];
         return next;
       });
       setMealLogs(prev => {
+        const next = { ...prev };
+        delete next[activeDateKey];
+        return next;
+      });
+      setMealNotes(prev => {
         const next = { ...prev };
         delete next[activeDateKey];
         return next;
@@ -325,32 +549,121 @@ export const TrackerProvider = ({ children }) => {
     }
   };
 
+  // Export Full JSON Backup
+  const exportFullBackup = () => {
+    const backupData = {
+      profile,
+      daysSchedule,
+      workouts,
+      dietMeals,
+      workoutLogs,
+      mealLogs,
+      mealNotes,
+      waterLogs,
+      exportedAt: new Date().toISOString(),
+      version: '2.0'
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fit-tracker-backup-${activeDateKey}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import Full JSON Backup
+  const importFullBackup = (fileContent) => {
+    try {
+      const data = JSON.parse(fileContent);
+      if (data.profile) setProfile(data.profile);
+      if (data.daysSchedule) setDaysSchedule(data.daysSchedule);
+      if (data.workouts) setWorkouts(data.workouts);
+      if (data.dietMeals) setDietMeals(data.dietMeals);
+      if (data.workoutLogs) setWorkoutLogs(data.workoutLogs);
+      if (data.mealLogs) setMealLogs(data.mealLogs);
+      if (data.mealNotes) setMealNotes(data.mealNotes);
+      if (data.waterLogs) setWaterLogs(data.waterLogs);
+      setHasCompletedOnboarding(true);
+      triggerCelebration("اطلاعات پشتیبان با موفقیت بازگردانی شد! 🎉");
+      return true;
+    } catch (e) {
+      alert("خطا در بازگردانی فایل پشتیبان. لطفاً از صحت فایل JSON اطمینان حاصل کنید.");
+      return false;
+    }
+  };
+
+  // Load Preset Defaults (Ardalan Ketabchi)
+  const loadDefaultPreset = () => {
+    setProfile(defaultProfile);
+    setDaysSchedule(initialDays);
+    setWorkouts(initialWorkouts);
+    setDietMeals(initialMeals);
+    setHasCompletedOnboarding(true);
+    setIsOnboardingOpen(false);
+    triggerCelebration("برنامه پیش‌فرض بارگذاری شد! 🚀");
+  };
+
   return (
     <TrackerContext.Provider
       value={{
+        profile,
+        setProfile,
+        hasCompletedOnboarding,
+        setHasCompletedOnboarding,
+        isOnboardingOpen,
+        setIsOnboardingOpen,
         selectedDayId,
         setSelectedDayId,
         activeDateKey,
         setActiveDateKey,
+        daysSchedule,
+        setDaysSchedule,
+        workouts,
+        setWorkouts,
+        dietMeals,
+        setDietMeals,
         workoutLogs,
         toggleSetComplete,
         updateSetValues,
+        copyFromPreviousSet,
         mealLogs,
         toggleMealComplete,
+        mealNotes,
+        updateMealNote,
         waterLogs,
         addWater,
         resetWater,
+        geminiApiKey,
+        setGeminiApiKey,
         videoModal,
         openVideoModal,
         closeVideoModal,
+        substituteModal,
+        openSubstituteModal,
+        closeSubstituteModal,
+        replaceExerciseInWorkout,
+        aiCoachModal,
+        setAiCoachModal,
+        isSettingsOpen,
+        setIsSettingsOpen,
+        isGDriveModalOpen,
+        setIsGDriveModalOpen,
         restTimer,
         startRestTimer,
         stopRestTimer,
         ergoTimer,
         setErgoTimer,
+        focusMode,
+        setFocusMode,
+        openFocusMode,
+        closeFocusMode,
         activeTab,
         setActiveTab,
-        resetTodayLogs
+        resetTodayLogs,
+        exportFullBackup,
+        importFullBackup,
+        loadDefaultPreset
       }}
     >
       {children}
