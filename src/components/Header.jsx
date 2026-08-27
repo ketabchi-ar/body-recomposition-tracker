@@ -73,7 +73,7 @@ export const Header = () => {
                     پلتفرم هوشمند تناسب اندام
                   </h1>
                   <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950">
-                    V5.0 PRO
+                    V7.0 PRO
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">

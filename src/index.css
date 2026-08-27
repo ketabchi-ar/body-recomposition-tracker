@@ -5,19 +5,25 @@
     --font-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
 
+  *, *::before, *::after {
+    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  }
+
   body {
-    font-family: var(--font-sans);
+    font-family: 'Vazirmatn', sans-serif !important;
     background-color: #020617; /* slate-950 */
     color: #f8fafc;
     direction: rtl;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   input, textarea, select, button {
-    font-family: var(--font-sans);
+    font-family: 'Vazirmatn', sans-serif !important;
   }
 
   ::placeholder, input::placeholder, textarea::placeholder {
-    font-family: var(--font-sans) !important;
+    font-family: 'Vazirmatn', sans-serif !important;
     color: #64748b;
   }
 }
