@@ -13,40 +13,45 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
+import { toPersianDigits } from '../utils/jalali';
 
 export const ProgressDashboard = () => {
   const { 
-    workoutLogs, 
-    mealLogs, 
-    waterLogs, 
-    profile, 
+    workoutLogs = {}, 
+    mealLogs = {}, 
+    waterLogs = {}, 
+    profile = {}, 
     exportFullBackup, 
     setAiCoachModal, 
     setIsGDriveModalOpen 
   } = useTracker();
 
-  const totalDaysTracked = Object.keys(workoutLogs).length || 1;
+  const totalDaysTracked = Object.keys(workoutLogs || {}).length || 1;
   
-  // Total sets completed overall
+  // Total sets completed overall (safe guards)
   let totalSetsCompleted = 0;
-  Object.values(workoutLogs).forEach(dayObj => {
-    Object.values(dayObj).forEach(setObj => {
-      if (setObj?.done) totalSetsCompleted++;
-    });
+  Object.values(workoutLogs || {}).forEach(dayObj => {
+    if (dayObj && typeof dayObj === 'object') {
+      Object.values(dayObj).forEach(setObj => {
+        if (setObj && typeof setObj === 'object' && setObj.done) totalSetsCompleted++;
+      });
+    }
   });
 
-  // Total meals consumed overall
+  // Total meals consumed overall (safe guards)
   let totalMealsConsumed = 0;
-  Object.values(mealLogs).forEach(dayObj => {
-    Object.values(dayObj).forEach(isMealDone => {
-      if (isMealDone) totalMealsConsumed++;
-    });
+  Object.values(mealLogs || {}).forEach(dayObj => {
+    if (dayObj && typeof dayObj === 'object') {
+      Object.values(dayObj).forEach(isMealDone => {
+        if (isMealDone) totalMealsConsumed++;
+      });
+    }
   });
 
   // Total water logged in liters
   let totalWaterLiters = 0;
-  Object.values(waterLogs).forEach(amount => {
-    totalWaterLiters += (amount || 0) / 1000;
+  Object.values(waterLogs || {}).forEach(amount => {
+    totalWaterLiters += (Number(amount) || 0) / 1000;
   });
 
   return (
@@ -83,7 +88,7 @@ export const ProgressDashboard = () => {
           </div>
           <div>
             <div className="text-[11px] text-slate-400">ست‌های ثبت‌شده</div>
-            <div className="text-lg sm:text-xl font-black text-white">{totalSetsCompleted} ست</div>
+            <div className="text-lg sm:text-xl font-black text-white">{toPersianDigits(totalSetsCompleted)} ست</div>
           </div>
         </div>
 
@@ -93,7 +98,7 @@ export const ProgressDashboard = () => {
           </div>
           <div>
             <div className="text-[11px] text-slate-400">وعده‌های رعایت‌شده</div>
-            <div className="text-lg sm:text-xl font-black text-white">{totalMealsConsumed} وعده</div>
+            <div className="text-lg sm:text-xl font-black text-white">{toPersianDigits(totalMealsConsumed)} وعده</div>
           </div>
         </div>
 
@@ -103,7 +108,7 @@ export const ProgressDashboard = () => {
           </div>
           <div>
             <div className="text-[11px] text-slate-400">کل آب مصرفی</div>
-            <div className="text-lg sm:text-xl font-black text-white">{totalWaterLiters.toFixed(1)} لیتر</div>
+            <div className="text-lg sm:text-xl font-black text-white">{toPersianDigits(totalWaterLiters.toFixed(1))} لیتر</div>
           </div>
         </div>
 
@@ -113,7 +118,7 @@ export const ProgressDashboard = () => {
           </div>
           <div>
             <div className="text-[11px] text-slate-400">روزهای ثبت لاگ</div>
-            <div className="text-lg sm:text-xl font-black text-white">{totalDaysTracked} روز</div>
+            <div className="text-lg sm:text-xl font-black text-white">{toPersianDigits(totalDaysTracked)} روز</div>
           </div>
         </div>
       </div>

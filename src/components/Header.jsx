@@ -18,7 +18,7 @@ import {
   Wrench
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
-import { getPersianDateFormatted } from '../utils/jalali';
+import { getPersianDateFormatted, toPersianDigits } from '../utils/jalali';
 
 export const Header = () => {
   const { 
