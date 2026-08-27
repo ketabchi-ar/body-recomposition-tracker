@@ -10,11 +10,15 @@ import {
   Filter, 
   Sparkles,
   ShieldCheck,
-  Edit2
+  Wand2,
+  Bookmark,
+  Trash2,
+  ArrowRight
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { exercisesBank, muscleGroups } from '../data/exercisesBank';
 import { foodsBank, foodCategories } from '../data/foodsBank';
+import { toPersianDigits } from '../utils/jalali';
 
 export const ProgramBuilder = () => {
   const { 
@@ -22,10 +26,13 @@ export const ProgramBuilder = () => {
     daysSchedule, 
     setDaysSchedule, 
     workouts, 
-    setWorkouts 
+    setWorkouts, 
+    loadDefaultPreset,
+    setIsAIPlanGenOpen,
+    removeExerciseFromDay 
   } = useTracker();
 
-  const [activeTab, setActiveTab] = useState('exercises'); // 'exercises' | 'foods' | 'days'
+  const [activeTab, setActiveTab] = useState('exercises'); // 'exercises' | 'foods' | 'days' | 'presets'
   
   // Exercise Search & Filter
   const [exerciseSearch, setExerciseSearch] = useState('');
@@ -52,17 +59,27 @@ export const ProgramBuilder = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Banner */}
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/70 p-5 shadow-xl">
-        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
-          <Sparkles className="w-4 h-4" />
-          <span>پلتفرم برنامه‌ساز و بانک داده‌های تخصصی</span>
+      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-700/70 p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
+            <Sparkles className="w-4 h-4" />
+            <span>پلتفرم برنامه‌ساز و بانک داده‌های تخصصی</span>
+          </div>
+          <h2 className="text-xl font-black text-white">
+            بانک جامع حرکات ورزشی، تغذیه و کتابخانه الگوها
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300">
+            جستجو و مشاهده آموزش‌های ویدیویی، ساخت خودکار برنامه با AI و مدیریت جلسات
+          </p>
         </div>
-        <h2 className="text-xl font-black text-white">
-          بانک جامع حرکات ورزشی، تغذیه و ویرایشگر برنامه
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-300 mt-2">
-          جستجو و مشاهده آموزش‌های ویدیویی تمام حرکات استاندارد، ارزش غذایی اقلام و شخصی‌سازی چیدمان جلسات
-        </p>
+
+        <button
+          onClick={() => setIsAIPlanGenOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:scale-105 self-start md:self-center"
+        >
+          <Wand2 className="w-4 h-4" />
+          <span>ساخت برنامه با هوش مصنوعی</span>
+        </button>
       </div>
 
       {/* Tabs */}
@@ -76,7 +93,7 @@ export const ProgramBuilder = () => {
           }`}
         >
           <Dumbbell className="w-4 h-4" />
-          <span>بانک حرکات ورزشی ({exercisesBank.length})</span>
+          <span>بانک حرکات ورزشی ({toPersianDigits(exercisesBank.length)})</span>
         </button>
 
         <button
@@ -88,7 +105,7 @@ export const ProgramBuilder = () => {
           }`}
         >
           <Utensils className="w-4 h-4" />
-          <span>بانک مواد غذایی و مکمل‌ها ({foodsBank.length})</span>
+          <span>بانک غذاها و مکمل‌ها ({toPersianDigits(foodsBank.length)})</span>
         </button>
 
         <button
@@ -100,7 +117,19 @@ export const ProgramBuilder = () => {
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>شخصی‌سازی جلسات هفتگی</span>
+          <span>ویرایش جلسات هفتگی</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('presets')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'presets'
+              ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+              : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+          }`}
+        >
+          <Bookmark className="w-4 h-4" />
+          <span>الگوهای مرجع آماده</span>
         </button>
       </div>
 
@@ -166,13 +195,15 @@ export const ProgramBuilder = () => {
                       <p className="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">{ex.nameEn}</p>
                     </div>
 
-                    <button
-                      onClick={() => openVideoModal(ex)}
-                      className="p-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 transition flex-shrink-0"
-                      title="مشاهده ویدیو در یوتیوب"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                    </button>
+                    {ex.youtubeId && (
+                      <button
+                        onClick={() => openVideoModal(ex)}
+                        className="p-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 transition flex-shrink-0"
+                        title="مشاهده ویدیو در یوتیوب"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </button>
+                    )}
                   </div>
 
                   {ex.biomechanics && (
@@ -183,8 +214,8 @@ export const ProgramBuilder = () => {
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
-                  <span>نوع ورودی: <strong className="text-slate-200">{ex.metricType === 'time_seconds' ? 'زمانی (ثانیه)' : 'وزنه + تکرار'}</strong></span>
-                  <span className="text-emerald-400 font-bold">{ex.proteinRequired}g پروتئین ریکاوری</span>
+                  <span>نوع: <strong className="text-slate-200">{ex.metricType === 'time_seconds' ? 'ثانیه‌ای' : 'وزنه + تکرار'}</strong></span>
+                  <span className="text-emerald-400 font-bold">{toPersianDigits(ex.proteinRequired)}g پروتئین ریکاوری</span>
                 </div>
               </div>
             ))}
@@ -243,13 +274,13 @@ export const ProgramBuilder = () => {
                 <div>
                   <h4 className="text-sm font-black text-white">{food.nameFa}</h4>
                   <div className="text-[11px] text-slate-400 mt-0.5">
-                    واحد سروینگ: {food.servingSize} {food.unit}
+                    واحد: {toPersianDigits(food.servingSize)} {food.unit}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs font-bold">
-                  <span className="text-amber-300">{food.calories} kcal</span>
-                  <span className="text-cyan-300">{food.protein}g پروتئین</span>
+                  <span className="text-amber-300">{toPersianDigits(food.calories)} kcal</span>
+                  <span className="text-cyan-300">{toPersianDigits(food.protein)}g پروتئین</span>
                 </div>
               </div>
             ))}
@@ -260,63 +291,102 @@ export const ProgramBuilder = () => {
       {/* Tab 3: Custom Days */}
       {activeTab === 'days' && (
         <div className="space-y-3.5">
-          {daysSchedule.map((day, idx) => (
-            <div
-              key={day.id}
-              className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="px-3 py-1 rounded-xl text-xs font-black bg-emerald-500 text-slate-950">
-                  {day.dayName}
-                </span>
-                <span className="text-xs text-slate-400">{day.category}</span>
+          {daysSchedule.map((day, idx) => {
+            const workout = workouts[day.workoutId];
+            return (
+              <div
+                key={day.id}
+                className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="px-3 py-1 rounded-xl text-xs font-black bg-emerald-500 text-slate-950">
+                    {day.dayName}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    تعداد حرکات: {toPersianDigits(workout?.exercises?.length || 0)} حرکت
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-slate-400 mb-1">عنوان برنامه روز:</label>
+                    <input
+                      type="text"
+                      value={day.title}
+                      onChange={(e) => {
+                        const next = [...daysSchedule];
+                        next[idx].title = e.target.value;
+                        setDaysSchedule(next);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 mb-1">ساعت بیداری:</label>
+                    <input
+                      type="text"
+                      value={day.wakeUpTime}
+                      onChange={(e) => {
+                        const next = [...daysSchedule];
+                        next[idx].wakeUpTime = e.target.value;
+                        setDaysSchedule(next);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 mb-1">شروع تمرین:</label>
+                    <input
+                      type="text"
+                      value={day.startTime}
+                      onChange={(e) => {
+                        const next = [...daysSchedule];
+                        next[idx].startTime = e.target.value;
+                        setDaysSchedule(next);
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center"
+                    />
+                  </div>
+                </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-400 mb-1">عنوان برنامه روز:</label>
-                  <input
-                    type="text"
-                    value={day.title}
-                    onChange={(e) => {
-                      const next = [...daysSchedule];
-                      next[idx].title = e.target.value;
-                      setDaysSchedule(next);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1">ساعت بیداری:</label>
-                  <input
-                    type="text"
-                    value={day.wakeUpTime}
-                    onChange={(e) => {
-                      const next = [...daysSchedule];
-                      next[idx].wakeUpTime = e.target.value;
-                      setDaysSchedule(next);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1">شروع تمرین:</label>
-                  <input
-                    type="text"
-                    value={day.startTime}
-                    onChange={(e) => {
-                      const next = [...daysSchedule];
-                      next[idx].startTime = e.target.value;
-                      setDaysSchedule(next);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center"
-                  />
-                </div>
-              </div>
+      {/* Tab 4: Reference Presets */}
+      {activeTab === 'presets' && (
+        <div className="space-y-4">
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/40 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-slate-950">
+                الگوی مرجع تخصصی
+              </span>
+              <span className="text-xs text-slate-400">۳ جلسه وزنه + ۳ جلسه کاردیو + ۱ روز شنا</span>
             </div>
-          ))}
+
+            <h3 className="text-lg font-black text-white">
+              برنامه بازسازی ترکیب بدنی (Body Recomposition) - اردالان کتابچی
+            </h3>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              این برنامه تخصصی شامل ۳ جلسه تمرین فول‌بادی با تمرکز بر ستون فقرات ایمن و پروتکل ضد آسیب دیسک کمر، دویدن ایزی ران زون ۲، کاردیو گروهی، رژیم ۸ وعده‌ای دقیق (۲۲۰۰ کالری / ۱۹۲ گرم پروتئین) و پروتکل ارگونومی ۳۰/۲ است.
+            </p>
+
+            <button
+              onClick={() => {
+                if (window.confirm("آیا مایلید این الگوی مرجع بارگذاری شود؟ تمام برنامه شما بر اساس این الگو تنظیم خواهد شد.")) {
+                  loadDefaultPreset();
+                }
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20"
+            >
+              <span>بارگذاری این الگوی مرجع</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>

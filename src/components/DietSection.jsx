@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Utensils, 
   Sparkles, 
@@ -18,9 +18,12 @@ import {
   Plus,
   RotateCcw,
   MessageSquare,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Trash2,
+  X
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
+import { toPersianDigits, parsePersianDigits } from '../utils/jalali';
 
 export const DietSection = () => {
   const { 
@@ -34,8 +37,22 @@ export const DietSection = () => {
     addWater, 
     resetWater, 
     activeDateKey, 
-    profile 
+    profile,
+    addMeal,
+    removeMeal 
   } = useTracker();
+
+  const [isAddMealModalOpen, setIsAddMealModalOpen] = useState(false);
+  const [newMealData, setNewMealData] = useState({
+    title: '',
+    subtitle: '',
+    time: '۱۲:۰۰',
+    items: '',
+    calories: '۳۰۰',
+    protein: '۲۵',
+    category: 'وعده اصلی',
+    icon: 'Utensils'
+  });
 
   const dayMealLogs = mealLogs[activeDateKey] || {};
   const dayMealNotes = mealNotes[activeDateKey] || {};
@@ -54,8 +71,8 @@ export const DietSection = () => {
     }
   });
 
-  const targetCalories = parseInt(profile.dailyTargetCalories) || 2200;
-  const targetProtein = parseInt(profile.dailyTargetProtein) || 192;
+  const targetCalories = parseInt(parsePersianDigits(profile.dailyTargetCalories)) || 2200;
+  const targetProtein = parseInt(parsePersianDigits(profile.dailyTargetProtein)) || 192;
   const targetWater = (profile.waterTargetLiters || 2.5) * 1000; // ml
 
   const caloriesPercent = Math.min(100, Math.round((consumedCalories / targetCalories) * 100));
@@ -67,6 +84,34 @@ export const DietSection = () => {
       if (!dayMealLogs[meal.id]) {
         toggleMealComplete(meal.id);
       }
+    });
+  };
+
+  const handleCreateMeal = (e) => {
+    e.preventDefault();
+    if (!newMealData.title.trim()) return;
+
+    addMeal({
+      title: newMealData.title.trim(),
+      subtitle: newMealData.subtitle.trim(),
+      time: newMealData.time,
+      items: newMealData.items.split('\n').filter(i => i.trim()),
+      calories: parseInt(parsePersianDigits(newMealData.calories)) || 0,
+      protein: parseInt(parsePersianDigits(newMealData.protein)) || 0,
+      category: newMealData.category,
+      icon: newMealData.icon
+    });
+
+    setIsAddMealModalOpen(false);
+    setNewMealData({
+      title: '',
+      subtitle: '',
+      time: '۱۲:۰۰',
+      items: '',
+      calories: '۳۰۰',
+      protein: '۲۵',
+      category: 'وعده اصلی',
+      icon: 'Utensils'
     });
   };
 
@@ -95,7 +140,7 @@ export const DietSection = () => {
                 {profile.goal}
               </span>
               <span className="text-xs text-slate-400">
-                پروتئین هدف: {profile.dailyTargetProtein} گرم
+                پروتئین هدف: {toPersianDigits(profile.dailyTargetProtein)} گرم
               </span>
             </div>
             <h2 className="text-xl font-black text-white mt-1">
@@ -103,15 +148,25 @@ export const DietSection = () => {
             </h2>
           </div>
 
-          {completedMealsCount < dietMeals.length && (
+          <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
             <button
-              onClick={markAllMealsDone}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 text-xs font-bold transition self-start md:self-center"
+              onClick={() => setIsAddMealModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition"
             >
-              <CheckCheck className="w-4 h-4" />
-              <span>تیک زدن تمام وعده‌ها</span>
+              <Plus className="w-4 h-4 text-emerald-400" />
+              <span>افزودن وعده غذایی</span>
             </button>
-          )}
+
+            {completedMealsCount < dietMeals.length && (
+              <button
+                onClick={markAllMealsDone}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 text-xs font-bold transition"
+              >
+                <CheckCheck className="w-4 h-4" />
+                <span>تیک زدن همه وعده‌ها</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 3 Macro Progress Cards: Calories, Protein, Water */}
@@ -124,7 +179,7 @@ export const DietSection = () => {
                 کالری دریافتی
               </span>
               <span className="text-xs font-bold text-amber-300">
-                {consumedCalories} / {targetCalories} kcal
+                {toPersianDigits(consumedCalories)} / {toPersianDigits(targetCalories)} kcal
               </span>
             </div>
             <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -134,7 +189,7 @@ export const DietSection = () => {
               ></div>
             </div>
             <div className="text-[11px] text-slate-400 text-left font-mono">
-              {caloriesPercent}٪ رعایت شده
+              {toPersianDigits(caloriesPercent)}٪ رعایت شده
             </div>
           </div>
 
@@ -146,7 +201,7 @@ export const DietSection = () => {
                 پروتئین خالص
               </span>
               <span className="text-xs font-bold text-cyan-300">
-                {consumedProtein} / {targetProtein} g
+                {toPersianDigits(consumedProtein)} / {toPersianDigits(targetProtein)} g
               </span>
             </div>
             <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -156,7 +211,7 @@ export const DietSection = () => {
               ></div>
             </div>
             <div className="text-[11px] text-slate-400 text-left font-mono">
-              {proteinPercent}٪ از هدف روزانه
+              {toPersianDigits(proteinPercent)}٪ از هدف روزانه
             </div>
           </div>
 
@@ -168,7 +223,7 @@ export const DietSection = () => {
                 مصرف آب روزانه
               </span>
               <span className="text-xs font-bold text-sky-300">
-                {(currentWater / 1000).toFixed(1)} / {profile.waterTargetLiters || 2.5} لیتر
+                {toPersianDigits((currentWater / 1000).toFixed(1))} / {toPersianDigits(profile.waterTargetLiters || 2.5)} لیتر
               </span>
             </div>
             <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -178,7 +233,7 @@ export const DietSection = () => {
               ></div>
             </div>
             <div className="text-[11px] text-slate-400 text-left font-mono">
-              {waterPercent}٪ هیدراتاسیون
+              {toPersianDigits(waterPercent)}٪ هیدراتاسیون
             </div>
           </div>
         </div>
@@ -196,7 +251,7 @@ export const DietSection = () => {
                 ردیاب نوشیدن آب در طول روز و کار پشت میز
               </h3>
               <p className="text-xs text-slate-400">
-                هدف: حداقل {profile.waterTargetLiters || 2.5} لیتر جهت جلوگیری از خشکی مفاصل و کندی چربی‌سوزی
+                هدف: حداقل {toPersianDigits(profile.waterTargetLiters || 2.5)} لیتر جهت جلوگیری از خشکی مفاصل و کندی چربی‌سوزی
               </p>
             </div>
           </div>
@@ -219,7 +274,7 @@ export const DietSection = () => {
             {currentWater > 0 && (
               <button
                 onClick={resetWater}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700 transition"
                 title="صفر کردن آب امروز"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -231,9 +286,18 @@ export const DietSection = () => {
 
       {/* Meals List */}
       <div className="space-y-3.5">
-        <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-          <Utensils className="w-4 h-4 text-emerald-400" />
-          <span>جدول وعده‌ها و زمان‌بندی مکمل‌ها ({dietMeals.length} وعده روزانه):</span>
+        <h3 className="text-sm font-bold text-slate-200 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Utensils className="w-4 h-4 text-emerald-400" />
+            <span>جدول وعده‌ها و زمان‌بندی مکمل‌ها ({toPersianDigits(dietMeals.length)} وعده روزانه):</span>
+          </span>
+          <button
+            onClick={() => setIsAddMealModalOpen(true)}
+            className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>افزودن وعده</span>
+          </button>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -251,7 +315,7 @@ export const DietSection = () => {
                 }`}
               >
                 <div>
-                  {/* Top Bar: Time, Category & Checkbox */}
+                  {/* Top Bar: Time, Category, Actions & Checkbox */}
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="p-2 rounded-xl bg-slate-800 border border-slate-700">
@@ -270,13 +334,21 @@ export const DietSection = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => openSubstituteModal(meal, 'food')}
                         className="p-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs transition"
                         title="جایگزین‌های این وعده"
                       >
                         <ArrowRightLeft className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => removeMeal(meal.id)}
+                        className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700 transition"
+                        title="حذف وعده"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
 
                       <button
@@ -301,14 +373,16 @@ export const DietSection = () => {
                   )}
 
                   {/* Meal Items List */}
-                  <ul className="space-y-1.5 my-3 bg-slate-950/60 p-3 rounded-xl border border-slate-850 text-xs text-slate-200">
-                    {meal.items.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="text-emerald-400 font-bold">•</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {meal.items && meal.items.length > 0 && (
+                    <ul className="space-y-1.5 my-3 bg-slate-950/60 p-3 rounded-xl border border-slate-850 text-xs text-slate-200">
+                      {meal.items.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-emerald-400 font-bold">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
                   {/* Meal Note / Deviation Input */}
                   <div className="mb-3">
@@ -318,7 +392,7 @@ export const DietSection = () => {
                     </div>
                     <input
                       type="text"
-                      placeholder="مثال: به جای فیله، ۱۰۰ گرم ماهی تن خوردم..."
+                      placeholder="مثال: به جای برنج ۱۰۰ گرم سیب‌زمینی خوردم..."
                       value={noteValue}
                       onChange={(e) => updateMealNote(meal.id, e.target.value)}
                       className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
@@ -331,10 +405,10 @@ export const DietSection = () => {
                   <span className="text-slate-400 text-[11px]">ارزش غذایی وعده:</span>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20">
-                      {meal.calories} kcal
+                      {toPersianDigits(meal.calories)} kcal
                     </span>
                     <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-bold border border-cyan-500/20">
-                      {meal.protein}g پروتئین
+                      {toPersianDigits(meal.protein)}g پروتئین
                     </span>
                   </div>
                 </div>
@@ -343,6 +417,99 @@ export const DietSection = () => {
           })}
         </div>
       </div>
+
+      {/* Add Meal Modal */}
+      {isAddMealModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-md bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="font-bold text-sm text-white">افزودن وعده غذایی جدید</h3>
+              <button onClick={() => setIsAddMealModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateMeal} className="p-5 space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1">عنوان وعده:</label>
+                <input
+                  type="text"
+                  placeholder="مثال: میان‌وعده عصر"
+                  value={newMealData.title}
+                  onChange={(e) => setNewMealData({ ...newMealData, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-300 mb-1">ساعت مصرف:</label>
+                  <input
+                    type="text"
+                    value={newMealData.time}
+                    onChange={(e) => setNewMealData({ ...newMealData, time: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-center"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1">دسته‌بندی:</label>
+                  <select
+                    value={newMealData.category}
+                    onChange={(e) => setNewMealData({ ...newMealData, category: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                  >
+                    <option value="وعده اصلی">وعده اصلی</option>
+                    <option value="میان‌وعده">میان‌وعده</option>
+                    <option value="مکمل">مکمل</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1">اقلام وعده (هر قلم در یک سطر):</label>
+                <textarea
+                  rows="3"
+                  placeholder="مثال:&#10;۱۵۰ گرم فیله مرغ&#10;۶ قاشق برنج"
+                  value={newMealData.items}
+                  onChange={(e) => setNewMealData({ ...newMealData, items: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white"
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-300 mb-1">کالری تقریبی (kcal):</label>
+                  <input
+                    type="text"
+                    value={newMealData.calories}
+                    onChange={(e) => setNewMealData({ ...newMealData, calories: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-center"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-1">پروتئین (گرم):</label>
+                  <input
+                    type="text"
+                    value={newMealData.protein}
+                    onChange={(e) => setNewMealData({ ...newMealData, protein: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-center"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black transition"
+              >
+                ثبت وعده غذایی
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

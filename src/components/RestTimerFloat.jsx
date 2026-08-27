@@ -1,11 +1,13 @@
 import React from 'react';
-import { Timer, Square, Play, RefreshCw, X } from 'lucide-react';
+import { Timer, RefreshCw, X } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
+import { toPersianDigits } from '../utils/jalali';
 
 export const RestTimerFloat = () => {
   const { restTimer, startRestTimer, stopRestTimer } = useTracker();
 
-  if (!restTimer.isRunning && restTimer.timeLeft === restTimer.duration) {
+  // If not running and timeLeft is at initial duration or 0, do not display
+  if (!restTimer.isRunning) {
     return null;
   }
 
@@ -25,7 +27,7 @@ export const RestTimerFloat = () => {
               {restTimer.exerciseName || 'تایمر استراحت بین ست‌ها'}
             </h4>
             <p className="text-[10px] text-slate-400">
-              {restTimer.isRunning ? 'در حال استراحت و ریکاوری...' : 'استراحت متوقف شده'}
+              {restTimer.isRunning ? 'در حال استراحت و ریکاوری...' : 'استراحت پایان یافت'}
             </p>
           </div>
         </div>
@@ -40,7 +42,7 @@ export const RestTimerFloat = () => {
           </button>
           <button
             onClick={stopRestTimer}
-            className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition"
+            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition"
             title="بستن تایمر"
           >
             <X className="w-4 h-4" />
@@ -57,7 +59,7 @@ export const RestTimerFloat = () => {
           ></div>
         </div>
         <span className="font-mono text-base font-black text-emerald-400 tracking-wider">
-          {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+          {toPersianDigits(String(minutes).padStart(2, '0'))}:{toPersianDigits(String(seconds).padStart(2, '0'))}
         </span>
       </div>
 

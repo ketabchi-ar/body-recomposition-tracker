@@ -1,11 +1,78 @@
 import { exercisesBank } from '../data/exercisesBank';
 import { foodsBank } from '../data/foodsBank';
 
+export const AI_PROVIDERS = [
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    description: 'مدل‌های سریع و قدرتمند گوگل (رایگان و سریع)',
+    defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta',
+    defaultModel: 'gemini-1.5-flash',
+    popularModels: [
+      'gemini-1.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-pro',
+      'gemini-2.5-flash'
+    ],
+    getKeyUrl: 'https://aistudio.google.com/app/apikey'
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter (جهانی)',
+    description: 'دسترسی به تمام مدل‌های مطرح دنیا (Claude, GPT-4o, DeepSeek)',
+    defaultEndpoint: 'https://openrouter.ai/api/v1',
+    defaultModel: 'deepseek/deepseek-chat',
+    popularModels: [
+      'deepseek/deepseek-chat',
+      'anthropic/claude-3.5-sonnet',
+      'openai/gpt-4o-mini',
+      'google/gemini-flash-1.5'
+    ],
+    getKeyUrl: 'https://openrouter.ai/keys'
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI (ChatGPT)',
+    description: 'مدل‌های رسمی OpenAI',
+    defaultEndpoint: 'https://api.openai.com/v1',
+    defaultModel: 'gpt-4o-mini',
+    popularModels: [
+      'gpt-4o-mini',
+      'gpt-4o',
+      'gpt-3.5-turbo'
+    ],
+    getKeyUrl: 'https://platform.openai.com/api-keys'
+  },
+  {
+    id: 'avalai',
+    name: 'AvalAI (پلتفرم ایرانی)',
+    description: 'سرویس ایرانی بدون نیاز به فیلترشکن با پرداخت ریالی',
+    defaultEndpoint: 'https://api.avalai.ir/v1',
+    defaultModel: 'gpt-4o-mini',
+    popularModels: [
+      'gpt-4o-mini',
+      'gpt-4o',
+      'claude-3-5-sonnet-20241022'
+    ],
+    getKeyUrl: 'https://avalai.ir'
+  },
+  {
+    id: 'gapgpt',
+    name: 'GapGPT (پلتفرم ایرانی)',
+    description: 'سرویس ابری هوش مصنوعی داخلی',
+    defaultEndpoint: 'https://api.gapgpt.app/v1',
+    defaultModel: 'gpt-4o-mini',
+    popularModels: [
+      'gpt-4o-mini',
+      'gpt-4o'
+    ],
+    getKeyUrl: 'https://gapgpt.app'
+  }
+];
+
 // Local rule-based substitute finder
 export function getLocalExerciseSubstitutes(exercise) {
   if (!exercise) return [];
-  
-  // Find in exercisesBank
   const found = exercisesBank.find(e => 
     e.id === exercise.id || 
     e.nameEn?.toLowerCase() === exercise.nameEn?.toLowerCase() ||
@@ -15,123 +82,282 @@ export function getLocalExerciseSubstitutes(exercise) {
   if (found && found.substitutes && found.substitutes.length > 0) {
     return exercisesBank.filter(e => found.substitutes.includes(e.id));
   }
-
-  // Fallback: search by same muscleGroup
   if (found && found.muscleGroup) {
     return exercisesBank.filter(e => e.muscleGroup === found.muscleGroup && e.id !== found.id).slice(0, 3);
   }
-
   return exercisesBank.slice(0, 3);
 }
 
-// Local rule-based food substitute finder
 export function getLocalFoodSubstitutes(mealTitle, itemText = '') {
   const query = (itemText + ' ' + mealTitle).toLowerCase();
-  
   let matchedCategory = 'protein';
-  if (query.includes('برنج') || query.includes('نان') || query.includes('سیب') || query.includes('عدس') || query.includes('موز')) {
+  if (query.includes('برنج') || query.includes('نان') || query.includes('سیب') || query.includes('عدس') || query.includes('موز') || query.includes('جو')) {
     matchedCategory = 'carb';
-  } else if (query.includes('مرغ') || query.includes('ماهی') || query.includes('گوشت') || query.includes('تخم') || query.includes('وی')) {
+  } else if (query.includes('مرغ') || query.includes('ماهی') || query.includes('گوشت') || query.includes('تخم') || query.includes('وی') || query.includes('ماست')) {
     matchedCategory = 'protein';
-  } else if (query.includes('روغن') || query.includes('زیتون')) {
+  } else if (query.includes('روغن') || query.includes('زیتون') || query.includes('گردو') || query.includes('بادام')) {
     matchedCategory = 'fat';
   }
-
   return foodsBank.filter(f => f.category === matchedCategory).slice(0, 4);
 }
 
-// Google Gemini API client
-export async function callGeminiAPI(apiKey, prompt, systemInstruction = '') {
+// Universal AI Caller Supporting Gemini, OpenAI, OpenRouter, AvalAI, GapGPT
+export async function callAIProvider({ provider = 'gemini', apiKey, model, customBaseUrl = '', prompt, systemInstruction = '' }) {
   if (!apiKey || apiKey.trim() === '') {
-    throw new Error('لطفاً ابتدا کلید Gemini API خود را در بخش تنظیمات یا بالای پنل هوش مصنوعی وارد نمایید.');
+    throw new Error('لطفاً ابتدا کلید API خود را وارد کنید.');
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
+  const key = apiKey.trim();
+  const selectedModel = model || (AI_PROVIDERS.find(p => p.id === provider)?.defaultModel) || 'gemini-1.5-flash';
 
-  const body = {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: prompt }]
+  if (provider === 'gemini') {
+    // Google Gemini REST API v1beta
+    // Remove model prefix if present e.g. models/gemini-1.5-flash -> gemini-1.5-flash
+    const cleanModel = selectedModel.replace('models/', '');
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${key}`;
+
+    const body = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048
       }
-    ],
-    generationConfig: {
-      temperature: 0.7,
-      topK: 40,
-      topP: 0.95,
-      maxOutputTokens: 1500
-    }
-  };
-
-  if (systemInstruction) {
-    body.systemInstruction = {
-      parts: [{ text: systemInstruction }]
     };
+    if (systemInstruction) {
+      body.systemInstruction = { parts: [{ text: systemInstruction }] };
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `خطای Gemini API (${response.status})`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('پاسخی از مدل Gemini دریافت نشد.');
+    return text;
+  } else {
+    // OpenAI Compatible API (OpenRouter, OpenAI, AvalAI, GapGPT)
+    let baseUrl = customBaseUrl.trim();
+    if (!baseUrl) {
+      const provInfo = AI_PROVIDERS.find(p => p.id === provider);
+      baseUrl = provInfo?.defaultEndpoint || 'https://api.openai.com/v1';
+    }
+
+    // Ensure no trailing slash
+    baseUrl = baseUrl.replace(/\/+$/, '');
+    const endpoint = `${baseUrl}/chat/completions`;
+
+    const messages = [];
+    if (systemInstruction) {
+      messages.push({ role: 'system', content: systemInstruction });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`
+    };
+
+    if (provider === 'openrouter') {
+      headers['HTTP-Referer'] = window.location.origin;
+      headers['X-Title'] = 'FitTracker Pro';
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: selectedModel,
+        messages,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `خطای API ارائه‌دهنده ${provider} (${response.status})`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) throw new Error('پاسخی از مدل دریافت نشد.');
+    return text;
   }
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || `خطا در برقراری ارتباط با Gemini API (کد وضعیت: ${response.status})`);
-  }
-
-  const data = await response.json();
-  const textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!textOutput) {
-    throw new Error('پاسخی از مدل هوش مصنوعی دریافت نشد.');
-  }
-
-  return textOutput;
 }
 
-// Generate Daily AI Analysis
-export async function generateDailyAIReport(apiKey, { profile, dayName, workoutLogsToday, mealLogsToday, waterToday, mealNotesToday, workoutDetail }) {
-  const systemPrompt = `شما یک مربی ارشد فیزیولوژی ورزشی و متخصص تغذیه بالینی تناسب اندام (Body Recomposition) هستید. لحن شما صمیمی، دقیق، علمی و انگیزشی به زبان فارسی است. پاسخ را با فرمت زیبای Markdown به همراه تیترها و ایموجی‌ها ارائه دهید.`;
+// Fetch available models from Provider
+export async function fetchAvailableModels(provider, apiKey, customBaseUrl = '') {
+  if (!apiKey || !apiKey.trim()) return [];
+  const key = apiKey.trim();
+
+  try {
+    if (provider === 'gemini') {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
+      const res = await fetch(endpoint);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.models || [])
+        .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+        .map(m => m.name.replace('models/', ''));
+    } else {
+      let baseUrl = customBaseUrl.trim() || (AI_PROVIDERS.find(p => p.id === provider)?.defaultEndpoint) || 'https://api.openai.com/v1';
+      baseUrl = baseUrl.replace(/\/+$/, '');
+      const endpoint = `${baseUrl}/models`;
+      const res = await fetch(endpoint, {
+        headers: { Authorization: `Bearer ${key}` }
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.data || []).map(m => m.id || m.name);
+    }
+  } catch (e) {
+    console.warn('Error fetching models list:', e);
+    return [];
+  }
+}
+
+// Test AI Connection
+export async function testAIConnection(provider, apiKey, model, customBaseUrl = '') {
+  const prompt = 'تست اتصال: لطفا در یک کلمه پاسخ دهید «آماده».';
+  const response = await callAIProvider({
+    provider,
+    apiKey,
+    model,
+    customBaseUrl,
+    prompt,
+    systemInstruction: 'پاسخ بسیار کوتاه دهید.'
+  });
+  return response;
+}
+
+// AI Plan Generator: Generates customized 7-day workout & diet structure
+export async function generateAIPlanWithAI(userSpecs, aiConfig) {
+  const systemPrompt = `شما یک هوش مصنوعی ارشد فیزیولوژی ورزشی و تغذیه بالینی هستید. خروجی شما باید **دقیقاً یک آبجکت JSON معتبر** بدون هیچ متن اضافی قبل یا بعد از JSON باشد.`;
 
   const userPrompt = `
-لطفاً عملکرد امروز ورزشکار را به صورت جامع تحلیل کنید:
+ورزشکار با مشخصات زیر خواهان یک برنامه اختصاصی و دقیق است:
+- نام: ${userSpecs.name || 'ورزشکار'}
+- سن: ${userSpecs.age || 30} سال | جنسیت: ${userSpecs.gender || 'مرد'}
+- قد: ${userSpecs.height || 175} سانتی‌متر | وزن: ${userSpecs.weight || 75} کیلوگرم
+- درصد چربی تخمینی: ${userSpecs.fatPercentage || 'نامشخص'}
+- هدف: ${userSpecs.goal || 'بازسازی ترکیب بدنی (Body Recomposition)'}
+- روزهای تمرین در هفته: ${userSpecs.daysPerWeek || 4} روز
+- تجهیزات دسترسی: ${userSpecs.equipment || 'باشگاه با تجهیزات کامل'}
+- ساعت کار پشت میز: ${userSpecs.deskHours || 8} ساعت
 
-مشخصات ورزشکار:
-- نام: ${profile.name || 'ورزشکار'}
-- قد: ${profile.height || '۱۷۸'} | وزن: ${profile.weight || '۷۱.۸'}
-- درصد چربی: ${profile.fatPercentage || '۳۰.۴٪'} | توده عضلانی: ${profile.muscleMass || '۲۷.۳ kg'}
-- هدف: ${profile.goal || 'کاهش ۱۱ کیلو چربی و بازسازی ترکیب بدنی (Body Recomposition)'}
-- ساعت کار پشت میز: ${profile.deskHours || 10} ساعت
+لطفاً یک خروجی JSON با ساختار زیر تولید کنید:
+{
+  "profile": {
+    "dailyTargetCalories": "۲۲۰۰",
+    "dailyTargetProtein": "۱۶۰",
+    "waterTargetLiters": 2.5,
+    "bmr": "۱۶۰۰ کیلوکالری"
+  },
+  "daysSchedule": [
+    {
+      "id": "saturday",
+      "dayIndex": 6,
+      "dayName": "شنبه",
+      "title": "عنوان تمرین",
+      "type": "strength",
+      "category": "فول بادی A",
+      "wakeUpTime": "۰۶:۳۰",
+      "startTime": "۱۷:۳۰",
+      "duration": "۵۰ دقیقه",
+      "target": "هدف جلسه",
+      "workoutId": "workout_sat"
+    }
+  ],
+  "workouts": {
+    "workout_sat": {
+      "id": "workout_sat",
+      "title": "فول بادی جلسه اول",
+      "exercises": [
+        {
+          "id": "ex_1",
+          "nameFa": "نام فارسی حرکت",
+          "nameEn": "Dumbbell Press",
+          "targetMuscle": "سینه",
+          "metricType": "weight_reps",
+          "setsReps": "4 × (12 - 10 - 8 - 8)",
+          "setsCount": 4,
+          "suggestedReps": [12, 10, 8, 8],
+          "calories": 60,
+          "proteinRequired": 10,
+          "biomechanics": "نکته ایمنی فرم و دیسک کمر",
+          "youtubeId": "VmB1G1K7v94"
+        }
+      ]
+    }
+  },
+  "dietMeals": [
+    {
+      "id": "meal_breakfast",
+      "time": "۰۷:۰۰",
+      "title": "صبحانه پروتئینی",
+      "subtitle": "تخم مرغ + جو دوسر",
+      "items": ["۳ عدد تخم مرغ", "۵۰ گرم جو دوسر"],
+      "calories": 400,
+      "protein": 30,
+      "icon": "Egg",
+      "category": "وعده اصلی",
+      "notes": "همراه با چای سبز"
+    }
+  ]
+}
+فقط و فقط JSON معتبر برگردانید.`;
 
-وضعیت امروز (${dayName}):
-- جلسه تمرینی: ${workoutDetail?.title || 'تمرین روز'}
-- ست‌های ثبت‌شده تمرین: ${JSON.stringify(workoutLogsToday || {})}
-- وضعیت رعایت وعده‌ها و مکمل‌ها: ${JSON.stringify(mealLogsToday || {})}
-- میزان آب مصرفی: ${waterToday || 0} میلی‌لیتر (هدف: ۲۵۰۰ میلی‌لیتر)
-- یادداشت‌ها، تغییرات و انحرافات غذایی گزارش‌شده توسط کاربر: ${JSON.stringify(mealNotesToday || {})}
+  const raw = await callAIProvider({
+    ...aiConfig,
+    prompt: userPrompt,
+    systemInstruction: systemPrompt
+  });
 
-لطفاً در تحلیل خود موارد زیر را پوشش دهید:
-۱. تحلیل حجم تمرین و کیفیت اجرای ست‌ها
-۲. تحلیل رعایت کالری و پروتئین خالص + بررسی یادداشت‌ها و انحرافات غذایی
-۳. وضعیت هیدراتاسیون و ارگونومی پشت‌میزنشینی
-۴. ۳ توصیه کلیدی و کاربردی برای فردا
-`;
-
-  return await callGeminiAPI(apiKey, userPrompt, systemPrompt);
+  // Clean markdown json fences if any
+  const cleaned = raw.replace(/^```json/m, '').replace(/^```/m, '').replace(/```$/m, '').trim();
+  return JSON.parse(cleaned);
 }
 
-// Generate Exercise / Diet Substitute Recommendation with AI
-export async function generateAISubstituteAdvice(apiKey, itemName, itemType = 'exercise', userCondition = '') {
+// Generate Daily AI Report
+export async function generateDailyAIReport(aiConfig, { profile, dayName, workoutLogsToday, mealLogsToday, waterToday, mealNotesToday, workoutDetail }) {
+  const systemPrompt = `شما یک مربی ارشد فیزیولوژی ورزشی و متخصص تغذیه بالینی هستید. لحن شما صمیمی، علمی و انگیزشی به زبان فارسی است. پاسخ را با فرمت مارک‌داون زیبا همراه با ایموجی ارائه دهید.`;
+
+  const userPrompt = `
+تحلیل عملکرد امروز ورزشکار:
+- نام: ${profile.name || 'ورزشکار'} | قد: ${profile.height} | وزن: ${profile.weight}
+- هدف: ${profile.goal}
+- جلسه امروز (${dayName}): ${workoutDetail?.title || 'تمرین روز'}
+- ست‌های ثبت‌شده: ${JSON.stringify(workoutLogsToday || {})}
+- وضعیت وعده‌ها: ${JSON.stringify(mealLogsToday || {})}
+- آب مصرفی: ${waterToday || 0} میلی‌لیتر
+- یادداشت‌ها و تغییرات غذایی: ${JSON.stringify(mealNotesToday || {})}
+
+تحلیل را در ۴ بخش شامل: ۱. تحلیل تمرین ۲. تحلیل تغذیه و یادداشت‌ها ۳. آب و ارگونومی ۴. توصیه‌های کلیدی فردا بنویسید.`;
+
+  return await callAIProvider({
+    ...aiConfig,
+    prompt: userPrompt,
+    systemInstruction: systemPrompt
+  });
+}
+
+// Generate AI Substitute Advice
+export async function generateAISubstituteAdvice(aiConfig, itemName, itemType = 'exercise', userCondition = '') {
   const prompt = `
-ورزشکار ما می‌خواهد برای آیتم زیر یک جایگزین مناسب دریافت کند:
-- نوع آیتم: ${itemType === 'exercise' ? 'حرکت ورزشی' : 'ماده غذایی / وعده'}
-- نام آیتم: ${itemName}
-- وضعیت / علت تعویض (در صورت وجود): ${userCondition || 'عدم دسترسی به دستگاه یا تنوع'}
+ورزشکار می‌خواهد برای ${itemType === 'exercise' ? 'حرکت ورزشی' : 'ماده غذایی'} «${itemName}» جایگزین دریافت کند.
+علت یا شرایط: ${userCondition || 'تنوع یا نبود تجهیزات'}
 
-لطفاً ۳ جایگزین عالی با ذکر علت بیومکانیکی یا تطابق ماکروها و کالری پیشنهاد دهید و نکات کلیدی اجرای ایمن برای دیسک کمر را متذکر شوید. پاسخ را به زبان فارسی و با فرمت مارک‌داون کوتاه و خوانا بنویسید.
-`;
+لطفاً ۳ جایگزین علمی با ذکر علت بیومکانیکی/ماکروها و نکات حفظ سلامت دیسک کمر به زبان فارسی پیشنهاد دهید.`;
 
-  return await callGeminiAPI(apiKey, prompt);
+  return await callAIProvider({
+    ...aiConfig,
+    prompt
+  });
 }

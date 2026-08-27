@@ -2,14 +2,14 @@ export const muscleGroups = [
   { id: 'chest', name: 'سینه (Chest)' },
   { id: 'back', name: 'پشت و زیربغل (Back & Lats)' },
   { id: 'legs', name: 'پا و باسن (Legs & Glutes)' },
-  { id: 'shoulders', name: 'سرشانه (Shoulders)' },
+  { id: 'shoulders', name: 'سرشانه و کول (Shoulders & Traps)' },
   { id: 'arms', name: 'بازو (Arms - Biceps & Triceps)' },
-  { id: 'core', name: 'شکم و ثبات کور (Core & Abs)' },
-  { id: 'cardio', name: 'کاردیو و هوازی (Cardio)' }
+  { id: 'core', name: 'شکم و ثبات کور (Core & Spine Stability)' },
+  { id: 'cardio', name: 'کاردیو، دویدن و هوازی (Cardio & Aerobics)' }
 ];
 
 export const exercisesBank = [
-  // CHEST
+  // CHEST (سینه)
   {
     id: 'ex_chest_db_bench',
     nameFa: 'پرس سینه دمبل روی میز صاف',
@@ -41,8 +41,23 @@ export const exercisesBank = [
     substitutes: ['ex_chest_db_bench', 'ex_chest_cable_fly']
   },
   {
+    id: 'ex_chest_bb_bench',
+    nameFa: 'پرس سینه با هالتر',
+    nameEn: 'Barbell Bench Press',
+    muscleGroup: 'chest',
+    targetMuscle: 'کل عضله پکتورالیس ماژور',
+    metricType: 'weight_reps',
+    defaultSets: 4,
+    suggestedReps: [10, 8, 6, 6],
+    caloriesPerSet: 18,
+    proteinRequired: 11,
+    biomechanics: 'پاها محکم روی زمین، شست دور میله قفل، میله در راستای میانه سینه فرود آید.',
+    youtubeId: 'rT7DgCr-3pg',
+    substitutes: ['ex_chest_db_bench']
+  },
+  {
     id: 'ex_chest_pushup',
-    nameFa: 'شنا سوئدی کنترل‌شده',
+    nameFa: 'شنا سوئدی استاندارد / کسری',
     nameEn: 'Push-up / Deficit Push-up',
     muscleGroup: 'chest',
     targetMuscle: 'سینه، کور، عضلات دندانه‌ای قدامی',
@@ -68,10 +83,40 @@ export const exercisesBank = [
     proteinRequired: 6,
     biomechanics: 'آرنج‌ها کمی خم و ثابت، انقباض متمرکز ۲ ثانیه‌ای در مرکز سینه.',
     youtubeId: 'Iwe6AmxVf7o',
+    substitutes: ['ex_chest_db_bench', 'ex_chest_pec_deck']
+  },
+  {
+    id: 'ex_chest_pec_deck',
+    nameFa: 'پروانه دستگاه (پک دک)',
+    nameEn: 'Pec Deck Machine Fly',
+    muscleGroup: 'chest',
+    targetMuscle: 'سینه میانی و داخلی',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [15, 12, 10],
+    caloriesPerSet: 11,
+    proteinRequired: 6,
+    biomechanics: 'تنظیم صندلی طوری که دسته‌ها هم‌راستای قفسه سینه باشند. مکث ۱ ثانیه در اوج انقباض.',
+    youtubeId: 'eGjt4lkGeZ4',
+    substitutes: ['ex_chest_cable_fly']
+  },
+  {
+    id: 'ex_chest_decline_db',
+    nameFa: 'پرس زیرسینه با دمبل',
+    nameEn: 'Decline Dumbbell Press',
+    muscleGroup: 'chest',
+    targetMuscle: 'بخش زیرین سینه (Abdominal Head)',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [12, 10, 8],
+    caloriesPerSet: 14,
+    proteinRequired: 8,
+    biomechanics: 'میز با شیب منفی ۱۵ تا ۲۰ درجه، کنترل وزنه در مسیر فرود.',
+    youtubeId: 'LfyQBUKR8SE',
     substitutes: ['ex_chest_db_bench']
   },
 
-  // BACK & LATS
+  // BACK & LATS (پشت و زیربغل)
   {
     id: 'ex_back_lat_pulldown',
     nameFa: 'زیربغل لت سیمکش دست باز',
@@ -132,8 +177,38 @@ export const exercisesBank = [
     youtubeId: 'eGo4IYlbE5g',
     substitutes: ['ex_back_lat_pulldown']
   },
+  {
+    id: 'ex_back_chest_supported_row',
+    nameFa: 'زیربغل دمبل جفت روی میز شیبدار',
+    nameEn: 'Chest-Supported Dumbbell Row',
+    muscleGroup: 'back',
+    targetMuscle: 'عضلات میانی پشت و ذوزنقه‌ای بدون فشار کمر',
+    metricType: 'weight_reps',
+    defaultSets: 4,
+    suggestedReps: [12, 10, 8, 8],
+    caloriesPerSet: 14,
+    proteinRequired: 9,
+    biomechanics: 'سینه کاملاً روی تشک میز شیبدار چسبیده باشد تا هیچ انقباض برشی در دیسک کمر رخ ندهد.',
+    youtubeId: 'H75im9fAUMc',
+    substitutes: ['ex_back_seated_cable_row']
+  },
+  {
+    id: 'ex_back_straight_arm_pulldown',
+    nameFa: 'پلاور سیمکش ایستاده (دست صاف)',
+    nameEn: 'Straight-Arm Lat Pulldown',
+    muscleGroup: 'back',
+    targetMuscle: 'ایزوله کردن زیربغل بدون درگیری جلوبازو',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [15, 12, 10],
+    caloriesPerSet: 11,
+    proteinRequired: 6,
+    biomechanics: 'دست‌ها با آرنج‌های کمی خم، کشیدن میله با تمرکز زیربغل تا جلوی ران.',
+    youtubeId: 'G9UduNksM-M',
+    substitutes: ['ex_back_lat_pulldown']
+  },
 
-  // LEGS & GLUTES
+  // LEGS & GLUTES (پا و باسن)
   {
     id: 'ex_leg_goblet_squat',
     nameFa: 'گابلت اسکوات با دمبل',
@@ -147,7 +222,7 @@ export const exercisesBank = [
     proteinRequired: 12,
     biomechanics: 'نگه داشتن دمبل چسبیده به سینه، ستون فقرات را کاملاً عمود و ایمن نگه می‌دارد.',
     youtubeId: 'MeIiIdhvXT4',
-    substitutes: ['ex_leg_extension', 'ex_leg_lunge']
+    substitutes: ['ex_leg_extension', 'ex_leg_lunge', 'ex_leg_leg_press']
   },
   {
     id: 'ex_leg_rdl',
@@ -209,8 +284,53 @@ export const exercisesBank = [
     youtubeId: '1Tq3QdYUuHs',
     substitutes: ['ex_leg_rdl']
   },
+  {
+    id: 'ex_leg_leg_press',
+    nameFa: 'پرس پا دستگاه ۴۵ درجه',
+    nameEn: '45-Degree Leg Press',
+    muscleGroup: 'legs',
+    targetMuscle: 'چهارسر، همسترینگ و باسن',
+    metricType: 'weight_reps',
+    defaultSets: 4,
+    suggestedReps: [12, 10, 8, 8],
+    caloriesPerSet: 22,
+    proteinRequired: 12,
+    biomechanics: 'پایین تنه به پشتی چسبیده، در بالای حرکت زانوها را قفل نکنید.',
+    youtubeId: 'IZxyjW7MPJQ',
+    substitutes: ['ex_leg_goblet_squat']
+  },
+  {
+    id: 'ex_leg_bulgarian_split_squat',
+    nameFa: 'اسپلیت اسکوات بلغاری با دمبل',
+    nameEn: 'Bulgarian Split Squat',
+    muscleGroup: 'legs',
+    targetMuscle: 'تعادل، باسن و چهارسر ران',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [10, 10, 8],
+    caloriesPerSet: 16,
+    proteinRequired: 9,
+    biomechanics: 'پای عقب روی نیمکت، حرکت عمودی به سمت پایین بدون فرود ناگهانی زانو.',
+    youtubeId: '2C-uNgKwPLE',
+    substitutes: ['ex_leg_lunge', 'ex_leg_goblet_squat']
+  },
+  {
+    id: 'ex_leg_calf_raise',
+    nameFa: 'ساق پا ایستاده با دمبل یا دستگاه',
+    nameEn: 'Standing Calf Raise',
+    muscleGroup: 'legs',
+    targetMuscle: 'دوقلو و نعلی ساق پا',
+    metricType: 'weight_reps',
+    defaultSets: 4,
+    suggestedReps: [15, 15, 12, 12],
+    caloriesPerSet: 8,
+    proteinRequired: 4,
+    biomechanics: 'کشش کامل در پایین و انقباض ۲ ثانیه‌ای روی پنجه در بالاترین نقطه.',
+    youtubeId: '-M4-G8p8fmc',
+    substitutes: []
+  },
 
-  // SHOULDERS
+  // SHOULDERS & TRAPS (سرشانه و کول)
   {
     id: 'ex_sh_seated_db_press',
     nameFa: 'پرس سرشانه نشسته با دمبل',
@@ -254,10 +374,40 @@ export const exercisesBank = [
     proteinRequired: 5,
     biomechanics: 'کشیدن طناب به سمت پیشانی با چرخش مچ به سمت بالا؛ عالی برای اصلاح شانه جلوآمده.',
     youtubeId: 'rep-qVOkqgk',
-    substitutes: ['ex_sh_lateral_raise']
+    substitutes: ['ex_sh_lateral_raise', 'ex_sh_reverse_pec_deck']
+  },
+  {
+    id: 'ex_sh_reverse_pec_deck',
+    nameFa: 'فلای معکوس دستگاه (پشت سرشانه)',
+    nameEn: 'Reverse Pec Deck / Rear Delt Fly',
+    muscleGroup: 'shoulders',
+    targetMuscle: 'دلتوئید خلفی و بالای پشت',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [15, 12, 12],
+    caloriesPerSet: 10,
+    proteinRequired: 5,
+    biomechanics: 'آرنج‌ها هم‌ارتفاع با شانه، حرکت افقی دست‌ها به عقب بدون انقباض گردن.',
+    youtubeId: 'b_fwtikp32A',
+    substitutes: ['ex_sh_facepull']
+  },
+  {
+    id: 'ex_sh_db_shrug',
+    nameFa: 'شراگ با دمبل (کول)',
+    nameEn: 'Dumbbell Shrug',
+    muscleGroup: 'shoulders',
+    targetMuscle: 'بخش بالایی عضله ذوزنقه‌ای (کول)',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [15, 12, 10],
+    caloriesPerSet: 10,
+    proteinRequired: 5,
+    biomechanics: 'بالا کشیدن مستقیم شانه‌ها به سمت گوش‌ها بدون چرخش مفصل شانه.',
+    youtubeId: 'g6qbq4Ou138',
+    substitutes: []
   },
 
-  // ARMS
+  // ARMS (بازو)
   {
     id: 'ex_arm_supinating_curl',
     nameFa: 'جلو بازو دمبل چرخشی',
@@ -271,7 +421,7 @@ export const exercisesBank = [
     proteinRequired: 6,
     biomechanics: 'چرخش کامل مچ دست در بالا برای حداکثر انقباض قله بازو بدون تاب دادن کمر.',
     youtubeId: 'in7PaeYlhrM',
-    substitutes: ['ex_arm_preacher_curl']
+    substitutes: ['ex_arm_preacher_curl', 'ex_arm_hammer_curl']
   },
   {
     id: 'ex_arm_preacher_curl',
@@ -289,6 +439,21 @@ export const exercisesBank = [
     substitutes: ['ex_arm_supinating_curl']
   },
   {
+    id: 'ex_arm_hammer_curl',
+    nameFa: 'جلو بازو دمبل چکشی',
+    nameEn: 'Hammer Curl',
+    muscleGroup: 'arms',
+    targetMuscle: 'براکیالیس و ساعد (ضخامت بازو)',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [12, 10, 10],
+    caloriesPerSet: 11,
+    proteinRequired: 6,
+    biomechanics: 'کف دست‌ها رو به هم، کنترل بخش منفی با ۲ الی ۳ ثانیه پایین آوردن.',
+    youtubeId: 'zC3nLlEvin4',
+    substitutes: ['ex_arm_supinating_curl']
+  },
+  {
     id: 'ex_arm_tricep_rope',
     nameFa: 'پشت بازو سیمکش طناب',
     nameEn: 'Tricep Rope Pushdown',
@@ -301,7 +466,7 @@ export const exercisesBank = [
     proteinRequired: 6,
     biomechanics: 'باز کردن دست‌ها در پایین حرکت و قفل کردن موقت آرنج در پهلوها.',
     youtubeId: 'vB5OHsJ3EME',
-    substitutes: ['ex_arm_machine_dip']
+    substitutes: ['ex_arm_machine_dip', 'ex_arm_skull_crusher']
   },
   {
     id: 'ex_arm_machine_dip',
@@ -318,8 +483,23 @@ export const exercisesBank = [
     youtubeId: '2z8JmcrW-As',
     substitutes: ['ex_arm_tricep_rope']
   },
+  {
+    id: 'ex_arm_skull_crusher',
+    nameFa: 'پشت بازو هالتر خوابیده (پشت بازو فرانسوی)',
+    nameEn: 'Skull Crusher / Lying Tricep Ext',
+    muscleGroup: 'arms',
+    targetMuscle: 'سر بلند سه سر بازویی',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [12, 10, 8],
+    caloriesPerSet: 12,
+    proteinRequired: 6,
+    biomechanics: 'آرنج‌ها ثابت و عمود به زمین، پایین آوردن هالتر به آرامی تا بالای پیشانی.',
+    youtubeId: 'd_KZxkY_0aw',
+    substitutes: ['ex_arm_tricep_rope']
+  },
 
-  // CORE & ABS
+  // CORE & SPINE STABILITY (شکم و ثبات کور)
   {
     id: 'ex_core_pallof_press',
     nameFa: 'پالوف پرس با کش یا سیمکش (ضد چرخش)',
@@ -343,12 +523,12 @@ export const exercisesBank = [
     targetMuscle: 'ثبات مرکزی و سلامت دیسک کمر',
     metricType: 'time_seconds',
     defaultSets: 3,
-    defaultSeconds: 30, // 3 x 10 with 5s pause
+    defaultSeconds: 30,
     caloriesPerSet: 7,
     proteinRequired: 3,
     biomechanics: 'دست و پای مخالف در امتداد بدن با مکث ۵ ثانیه‌ای بدون چرخش لگن.',
     youtubeId: '4_A7G7_sO78',
-    substitutes: ['ex_core_pallof_press', 'ex_core_rkc_plank']
+    substitutes: ['ex_core_pallof_press', 'ex_core_rkc_plank', 'ex_core_deadbug']
   },
   {
     id: 'ex_core_rkc_plank',
@@ -365,8 +545,38 @@ export const exercisesBank = [
     youtubeId: '6TKwMm6v0q8',
     substitutes: ['ex_core_pallof_press', 'ex_core_bird_dog']
   },
+  {
+    id: 'ex_core_deadbug',
+    nameFa: 'ددباگ (حشره مرده - ثبات ستون فقرات)',
+    nameEn: 'Dead Bug Exercise',
+    muscleGroup: 'core',
+    targetMuscle: 'عرضی شکم و تثبیت لگن بدون فشار کمر',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [12, 12, 10],
+    caloriesPerSet: 7,
+    proteinRequired: 3,
+    biomechanics: 'پایین کمر کاملاً چسبیده به زمین، دست و پای مخالف با بازدم عمیق به پایین می‌روند.',
+    youtubeId: 'g_BYB0R-4Ws',
+    substitutes: ['ex_core_bird_dog']
+  },
+  {
+    id: 'ex_core_cable_woodchopper',
+    nameFa: 'چوب‌بری با سیمکش (Woodchopper)',
+    nameEn: 'Cable Woodchopper',
+    muscleGroup: 'core',
+    targetMuscle: 'عضلات مورب شکم و توان چرخشی کور',
+    metricType: 'weight_reps',
+    defaultSets: 3,
+    suggestedReps: [12, 12, 10],
+    caloriesPerSet: 10,
+    proteinRequired: 4,
+    biomechanics: 'چرخش با محوریت مفاصل ران و تنه، دست‌ها کشیده و کنترل بخش بازگشت.',
+    youtubeId: 'pAplQXk3dkU',
+    substitutes: ['ex_core_pallof_press']
+  },
 
-  // CARDIO
+  // CARDIO & AEROBICS (کاردیو و هوازی)
   {
     id: 'ex_cardio_zone2_run',
     nameFa: 'دویدن ایزی ران زون ۲ (Zone 2 Easy Run)',
@@ -380,7 +590,7 @@ export const exercisesBank = [
     proteinRequired: 15,
     biomechanics: 'ضربان در محدوده ۶۰٪ تا ۷۰٪؛ تنفس راحت بدون نیاز به دهان‌بازنفس.',
     youtubeId: '03X0_wFqX2M',
-    substitutes: ['ex_cardio_swim']
+    substitutes: ['ex_cardio_swim', 'ex_cardio_cycling']
   },
   {
     id: 'ex_cardio_swim',
@@ -395,6 +605,36 @@ export const exercisesBank = [
     proteinRequired: 10,
     biomechanics: 'شناوری و تخلیه اسید لاکتیک بدون خستگی شدید.',
     youtubeId: 'pfn8_d_Wb08',
+    substitutes: ['ex_cardio_zone2_run']
+  },
+  {
+    id: 'ex_cardio_cycling',
+    nameFa: 'دوچرخه ثابت هوازی (Zone 2)',
+    nameEn: 'Stationary Bike (Zone 2)',
+    muscleGroup: 'cardio',
+    targetMuscle: 'قلب و عروق، کوادریسپس بدون ضربه به مفاصل',
+    metricType: 'time_seconds',
+    defaultSets: 1,
+    defaultSeconds: 1800,
+    caloriesPerSet: 230,
+    proteinRequired: 12,
+    biomechanics: 'تنظیم ارتفاع زین به اندازه سطح لگن، رکاب زدن روان با کادنس ۸۰ تا ۹۰.',
+    youtubeId: 'r4D3lB6VvG8',
+    substitutes: ['ex_cardio_zone2_run']
+  },
+  {
+    id: 'ex_cardio_hiit_jump_rope',
+    nameFa: 'طناب زدن سرعتی هیت (HIIT Jump Rope)',
+    nameEn: 'HIIT Jump Rope Intervals',
+    muscleGroup: 'cardio',
+    targetMuscle: 'چربی‌سوزی انفجاری، ساق پا و هماهنگی عصب-عضله',
+    metricType: 'time_seconds',
+    defaultSets: 5,
+    defaultSeconds: 60,
+    caloriesPerSet: 25,
+    proteinRequired: 5,
+    biomechanics: 'پرش‌های کوتاه ۱ تا ۲ سانتی‌متری فقط از مچ پا بدون فرود سنگین روی پاشنه.',
+    youtubeId: 'u3zgHI8YCyo',
     substitutes: ['ex_cardio_zone2_run']
   }
 ];

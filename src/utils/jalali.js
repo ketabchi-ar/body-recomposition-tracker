@@ -1,5 +1,4 @@
 // Pure JavaScript Persian (Jalali) Date Converter and Formatter
-// Algorithm based on Kazimierz M. Borkowski astronomical algorithm
 
 export function gregorianToJalali(gy, gm, gd) {
   const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -35,12 +34,24 @@ const persianWeekDays = [
   'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'
 ];
 
-// Convert Latin digits to Persian digits
+// Convert Latin digits (0-9) to Persian digits (۰-۹)
 export function toPersianDigits(num) {
-  if (num === null || num === undefined) return '';
+  if (num === null || num === undefined || num === '') return '';
   const str = String(num);
   const persianNums = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
   return str.replace(/[0-9]/g, w => persianNums[+w]);
+}
+
+// Convert Persian (۰-۹) and Arabic (٠-٩) digits to standard Latin digits (0-9)
+export function parsePersianDigits(str) {
+  if (str === null || str === undefined) return '';
+  const persianMap = {
+    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
+  };
+  return String(str).replace(/[۰-۹٠-٩]/g, match => persianMap[match] || match);
 }
 
 // Get full formatted Persian date string e.g. "جمعه ۷ شهریور ۱۴۰۵"

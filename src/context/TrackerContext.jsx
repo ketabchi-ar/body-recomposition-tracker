@@ -6,6 +6,7 @@ import { exercisesBank } from '../data/exercisesBank';
 import { foodsBank } from '../data/foodsBank';
 import { getLocalExerciseSubstitutes, getLocalFoodSubstitutes } from '../utils/aiService';
 import { googleDrive } from '../utils/googleDrive';
+import { parsePersianDigits } from '../utils/jalali';
 
 const TrackerContext = createContext();
 
@@ -36,6 +37,7 @@ export const TrackerProvider = ({ children }) => {
   });
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isAIPlanGenOpen, setIsAIPlanGenOpen] = useState(false);
 
   // Selected Day & Active Date
   const [selectedDayId, setSelectedDayId] = useState(getTodayScheduleId);
@@ -109,9 +111,26 @@ export const TrackerProvider = ({ children }) => {
     }
   });
 
-  // Gemini API Key
-  const [geminiApiKey, setGeminiApiKey] = useState(() => {
-    return localStorage.getItem('fit_tracker_gemini_api_key') || '';
+  // Multi-Provider AI Config State
+  const [aiConfig, setAiConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fit_tracker_ai_config');
+      if (saved) return JSON.parse(saved);
+      const legacyKey = localStorage.getItem('fit_tracker_gemini_api_key');
+      return {
+        provider: 'gemini',
+        apiKey: legacyKey || '',
+        model: 'gemini-1.5-flash',
+        customBaseUrl: ''
+      };
+    } catch {
+      return {
+        provider: 'gemini',
+        apiKey: '',
+        model: 'gemini-1.5-flash',
+        customBaseUrl: ''
+      };
+    }
   });
 
   // Modals
@@ -134,7 +153,7 @@ export const TrackerProvider = ({ children }) => {
 
   const [aiCoachModal, setAiCoachModal] = useState({
     isOpen: false,
-    initialTab: 'daily' // 'daily' | 'weekly' | 'chat'
+    initialTab: 'daily' // 'daily' | 'chat' | 'settings'
   });
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -206,8 +225,8 @@ export const TrackerProvider = ({ children }) => {
   }, [waterLogs]);
 
   useEffect(() => {
-    localStorage.setItem('fit_tracker_gemini_api_key', geminiApiKey);
-  }, [geminiApiKey]);
+    localStorage.setItem('fit_tracker_ai_config', JSON.stringify(aiConfig));
+  }, [aiConfig]);
 
   // First-time onboarding trigger
   useEffect(() => {
@@ -216,7 +235,7 @@ export const TrackerProvider = ({ children }) => {
     }
   }, [hasCompletedOnboarding]);
 
-  // Rest Timer Interval with auto-dismiss
+  // Rest Timer Interval
   useEffect(() => {
     let interval = null;
     if (restTimer.isRunning && restTimer.timeLeft > 0) {
@@ -228,10 +247,9 @@ export const TrackerProvider = ({ children }) => {
       }, 1000);
     } else if (restTimer.isRunning && restTimer.timeLeft <= 0) {
       sounds.playTimerAlert();
-      // Auto dismiss after 2 seconds
       setTimeout(() => {
         setRestTimer(prev => ({ ...prev, isRunning: false }));
-      }, 2000);
+      }, 1500);
     }
     return () => clearInterval(interval);
   }, [restTimer.isRunning, restTimer.timeLeft]);
@@ -275,7 +293,6 @@ export const TrackerProvider = ({ children }) => {
 
       if (nextDone) {
         checkIfAllDoneAndCelebrate(updated);
-        // If in focus mode, auto trigger rest timer
         if (focusMode.isOpen) {
           startRestTimer(60, 'استراحت بین ست‌ها');
         }
@@ -286,6 +303,7 @@ export const TrackerProvider = ({ children }) => {
   };
 
   const updateSetValues = (exerciseId, setIndex, field, value) => {
+    const cleanValue = parsePersianDigits(value);
     setWorkoutLogs(prev => {
       const dayLogs = prev[activeDateKey] || {};
       const key = `${exerciseId}_${setIndex}`;
@@ -296,14 +314,13 @@ export const TrackerProvider = ({ children }) => {
           ...dayLogs,
           [key]: {
             ...current,
-            [field]: value
+            [field]: cleanValue
           }
         }
       };
     });
   };
 
-  // Copy values from previous set (e.g. Set 2 copies from Set 1)
   const copyFromPreviousSet = (exerciseId, setIndex) => {
     if (setIndex <= 0) return;
     const dayLogs = workoutLogs[activeDateKey] || {};
@@ -329,6 +346,97 @@ export const TrackerProvider = ({ children }) => {
         }
       };
     });
+  };
+
+  // In-place Exercise Management
+  const addExerciseToDay = (dayId, exercise) => {
+    setWorkouts(prev => {
+      const targetDay = daysSchedule.find(d => d.id === dayId);
+      if (!targetDay) return prev;
+      const workoutId = targetDay.workoutId;
+      const currentWorkout = prev[workoutId] || { id: workoutId, title: targetDay.title, exercises: [] };
+      const newEx = {
+        ...exercise,
+        id: `custom_${Date.now()}_${exercise.id || 'ex'}`,
+        setsCount: exercise.defaultSets || 3,
+        setsReps: exercise.setsReps || `${exercise.defaultSets || 3} × 10`,
+        suggestedReps: exercise.suggestedReps || [10, 10, 10]
+      };
+      return {
+        ...prev,
+        [workoutId]: {
+          ...currentWorkout,
+          exercises: [...(currentWorkout.exercises || []), newEx]
+        }
+      };
+    });
+    triggerCelebration('حرکت با موفقیت به برنامه اضافه شد! 🏋️');
+  };
+
+  const removeExerciseFromDay = (dayId, exerciseId) => {
+    if (!window.confirm('آیا از حذف این حرکت از برنامه مطمئن هستید؟')) return;
+    setWorkouts(prev => {
+      const targetDay = daysSchedule.find(d => d.id === dayId);
+      if (!targetDay) return prev;
+      const workoutId = targetDay.workoutId;
+      const currentWorkout = prev[workoutId];
+      if (!currentWorkout) return prev;
+      return {
+        ...prev,
+        [workoutId]: {
+          ...currentWorkout,
+          exercises: currentWorkout.exercises.filter(e => e.id !== exerciseId)
+        }
+      };
+    });
+  };
+
+  const updateExerciseSetsCount = (dayId, exerciseId, delta) => {
+    setWorkouts(prev => {
+      const targetDay = daysSchedule.find(d => d.id === dayId);
+      if (!targetDay) return prev;
+      const workoutId = targetDay.workoutId;
+      const currentWorkout = prev[workoutId];
+      if (!currentWorkout) return prev;
+      const updated = currentWorkout.exercises.map(ex => {
+        if (ex.id === exerciseId) {
+          const newCount = Math.max(1, Math.min(10, (ex.setsCount || 3) + delta));
+          return {
+            ...ex,
+            setsCount: newCount,
+            setsReps: `${newCount} ست`
+          };
+        }
+        return ex;
+      });
+      return {
+        ...prev,
+        [workoutId]: {
+          ...currentWorkout,
+          exercises: updated
+        }
+      };
+    });
+  };
+
+  // In-place Meal Management
+  const addMeal = (newMeal) => {
+    setDietMeals(prev => [...prev, { ...newMeal, id: `meal_${Date.now()}` }]);
+    triggerCelebration('وعده غذایی جدید اضافه شد! 🥗');
+  };
+
+  const removeMeal = (mealId) => {
+    if (!window.confirm('آیا از حذف این وعده غذایی مطمئن هستید؟')) return;
+    setDietMeals(prev => prev.filter(m => m.id !== mealId));
+  };
+
+  const updateMeal = (mealId, field, value) => {
+    setDietMeals(prev => prev.map(m => {
+      if (m.id === mealId) {
+        return { ...m, [field]: value };
+      }
+      return m;
+    }));
   };
 
   const toggleMealComplete = (mealId) => {
@@ -432,7 +540,7 @@ export const TrackerProvider = ({ children }) => {
   };
 
   const stopRestTimer = () => {
-    setRestTimer(prev => ({ ...prev, isRunning: false }));
+    setRestTimer(prev => ({ ...prev, isRunning: false, timeLeft: prev.duration }));
   };
 
   const openVideoModal = (exercise) => {
@@ -451,7 +559,6 @@ export const TrackerProvider = ({ children }) => {
     setVideoModal(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Open substitute finder modal
   const openSubstituteModal = (item, type = 'exercise') => {
     let substitutes = [];
     if (type === 'exercise') {
@@ -471,7 +578,6 @@ export const TrackerProvider = ({ children }) => {
     setSubstituteModal(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Replace exercise in current workout
   const replaceExerciseInWorkout = (targetExerciseId, newExercise) => {
     setWorkouts(prev => {
       const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
@@ -508,7 +614,6 @@ export const TrackerProvider = ({ children }) => {
     closeSubstituteModal();
   };
 
-  // Focus Mode Controls
   const openFocusMode = (dayId = selectedDayId) => {
     setFocusMode({
       isOpen: true,
@@ -523,7 +628,6 @@ export const TrackerProvider = ({ children }) => {
     setFocusMode(prev => ({ ...prev, isOpen: false, isSessionRunning: false }));
   };
 
-  // Reset Today
   const resetTodayLogs = () => {
     if (window.confirm("آیا مایلید تمام تیک‌ها و یادداشت‌های روز جاری پاکسازی شوند؟")) {
       setWorkoutLogs(prev => {
@@ -549,7 +653,6 @@ export const TrackerProvider = ({ children }) => {
     }
   };
 
-  // Export Full JSON Backup
   const exportFullBackup = () => {
     const backupData = {
       profile,
@@ -560,8 +663,9 @@ export const TrackerProvider = ({ children }) => {
       mealLogs,
       mealNotes,
       waterLogs,
+      aiConfig,
       exportedAt: new Date().toISOString(),
-      version: '2.0'
+      version: '3.0'
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -572,7 +676,6 @@ export const TrackerProvider = ({ children }) => {
     URL.revokeObjectURL(url);
   };
 
-  // Import Full JSON Backup
   const importFullBackup = (fileContent) => {
     try {
       const data = JSON.parse(fileContent);
@@ -584,16 +687,16 @@ export const TrackerProvider = ({ children }) => {
       if (data.mealLogs) setMealLogs(data.mealLogs);
       if (data.mealNotes) setMealNotes(data.mealNotes);
       if (data.waterLogs) setWaterLogs(data.waterLogs);
+      if (data.aiConfig) setAiConfig(data.aiConfig);
       setHasCompletedOnboarding(true);
       triggerCelebration("اطلاعات پشتیبان با موفقیت بازگردانی شد! 🎉");
       return true;
-    } catch (e) {
+    } catch {
       alert("خطا در بازگردانی فایل پشتیبان. لطفاً از صحت فایل JSON اطمینان حاصل کنید.");
       return false;
     }
   };
 
-  // Load Preset Defaults (Ardalan Ketabchi)
   const loadDefaultPreset = () => {
     setProfile(defaultProfile);
     setDaysSchedule(initialDays);
@@ -601,7 +704,7 @@ export const TrackerProvider = ({ children }) => {
     setDietMeals(initialMeals);
     setHasCompletedOnboarding(true);
     setIsOnboardingOpen(false);
-    triggerCelebration("برنامه پیش‌فرض بارگذاری شد! 🚀");
+    triggerCelebration("الگوی مرجع اردالان کتابچی بارگذاری شد! 🚀");
   };
 
   return (
@@ -613,6 +716,8 @@ export const TrackerProvider = ({ children }) => {
         setHasCompletedOnboarding,
         isOnboardingOpen,
         setIsOnboardingOpen,
+        isAIPlanGenOpen,
+        setIsAIPlanGenOpen,
         selectedDayId,
         setSelectedDayId,
         activeDateKey,
@@ -627,6 +732,12 @@ export const TrackerProvider = ({ children }) => {
         toggleSetComplete,
         updateSetValues,
         copyFromPreviousSet,
+        addExerciseToDay,
+        removeExerciseFromDay,
+        updateExerciseSetsCount,
+        addMeal,
+        removeMeal,
+        updateMeal,
         mealLogs,
         toggleMealComplete,
         mealNotes,
@@ -634,8 +745,8 @@ export const TrackerProvider = ({ children }) => {
         waterLogs,
         addWater,
         resetWater,
-        geminiApiKey,
-        setGeminiApiKey,
+        aiConfig,
+        setAiConfig,
         videoModal,
         openVideoModal,
         closeVideoModal,

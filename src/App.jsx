@@ -14,6 +14,7 @@ import { FocusModeModal } from './components/FocusModeModal';
 import { GoogleDriveSyncModal } from './components/GoogleDriveSyncModal';
 import { SettingsModal } from './components/SettingsModal';
 import { OnboardingModal } from './components/OnboardingModal';
+import { AIPlanGeneratorModal } from './components/AIPlanGeneratorModal';
 import { RestTimerFloat } from './components/RestTimerFloat';
 
 const MainContent = () => {
@@ -32,26 +33,37 @@ const MainContent = () => {
 };
 
 export function App() {
+  const { isAIPlanGenOpen, setIsAIPlanGenOpen } = useTracker ? {} : {};
+
   return (
     <TrackerProvider>
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col" dir="rtl">
-        <Header />
-        <div className="flex-1">
-          <MainContent />
-        </div>
-        
-        {/* Modals & Overlays */}
-        <VideoModal />
-        <SubstituteModal />
-        <AICoachModal />
-        <FocusModeModal />
-        <GoogleDriveSyncModal />
-        <SettingsModal />
-        <OnboardingModal />
-        <RestTimerFloat />
-      </div>
+      <AppContent />
     </TrackerProvider>
   );
 }
+
+const AppContent = () => {
+  const { isAIPlanGenOpen, setIsAIPlanGenOpen } = useTracker();
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col" dir="rtl">
+      <Header />
+      <div className="flex-1">
+        <MainContent />
+      </div>
+      
+      {/* Modals & Overlays */}
+      <VideoModal />
+      <SubstituteModal />
+      <AICoachModal />
+      <FocusModeModal />
+      <GoogleDriveSyncModal />
+      <SettingsModal />
+      <OnboardingModal />
+      <AIPlanGeneratorModal isOpen={isAIPlanGenOpen} onClose={() => setIsAIPlanGenOpen(false)} />
+      <RestTimerFloat />
+    </div>
+  );
+};
 
 export default App;

@@ -11,6 +11,15 @@
     color: #f8fafc;
     direction: rtl;
   }
+
+  input, textarea, select, button {
+    font-family: var(--font-sans);
+  }
+
+  ::placeholder, input::placeholder, textarea::placeholder {
+    font-family: var(--font-sans) !important;
+    color: #64748b;
+  }
 }
 
 /* Custom scrollbar */
