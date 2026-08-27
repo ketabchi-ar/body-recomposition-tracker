@@ -15,6 +15,7 @@ import { GoogleDriveSyncModal } from './components/GoogleDriveSyncModal';
 import { SettingsModal } from './components/SettingsModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { AIPlanGeneratorModal } from './components/AIPlanGeneratorModal';
+import { HealthSyncModal } from './components/HealthSyncModal';
 import { RestTimerFloat } from './components/RestTimerFloat';
 
 const MainContent = () => {
@@ -33,8 +34,6 @@ const MainContent = () => {
 };
 
 export function App() {
-  const { isAIPlanGenOpen, setIsAIPlanGenOpen } = useTracker ? {} : {};
-
   return (
     <TrackerProvider>
       <AppContent />
@@ -43,7 +42,7 @@ export function App() {
 }
 
 const AppContent = () => {
-  const { isAIPlanGenOpen, setIsAIPlanGenOpen } = useTracker();
+  const { isAIPlanGenOpen, setIsAIPlanGenOpen, isHealthSyncOpen, setIsHealthSyncOpen } = useTracker();
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col" dir="rtl">
@@ -58,6 +57,7 @@ const AppContent = () => {
       <AICoachModal />
       <FocusModeModal />
       <GoogleDriveSyncModal />
+      <HealthSyncModal isOpen={isHealthSyncOpen} onClose={() => setIsHealthSyncOpen(false)} />
       <SettingsModal />
       <OnboardingModal />
       <AIPlanGeneratorModal isOpen={isAIPlanGenOpen} onClose={() => setIsAIPlanGenOpen(false)} />

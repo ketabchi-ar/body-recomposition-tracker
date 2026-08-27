@@ -40,6 +40,7 @@ export const ProgramBuilder = () => {
   // Exercise Search & Filter
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState('all');
+  const [selectedEquipment, setSelectedEquipment] = useState('all');
 
   // Food Search & Filter
   const [foodSearch, setFoodSearch] = useState('');
@@ -49,7 +50,16 @@ export const ProgramBuilder = () => {
   const filteredExercises = exercisesBank.filter(ex => {
     const matchesSearch = ex.nameFa.includes(exerciseSearch) || ex.nameEn.toLowerCase().includes(exerciseSearch.toLowerCase());
     const matchesMuscle = selectedMuscle === 'all' || ex.muscleGroup === selectedMuscle;
-    return matchesSearch && matchesMuscle;
+    const matchesEquipment = selectedEquipment === 'all' || 
+      (selectedEquipment === 'dumbbell' && (ex.nameFa.includes('دمبل') || ex.nameEn.toLowerCase().includes('dumbbell') || ex.nameEn.toLowerCase().includes('db'))) ||
+      (selectedEquipment === 'barbell' && (ex.nameFa.includes('هالتر') || ex.nameEn.toLowerCase().includes('barbell') || ex.nameEn.toLowerCase().includes('bb'))) ||
+      (selectedEquipment === 'cable' && (ex.nameFa.includes('سیم') || ex.nameEn.toLowerCase().includes('cable'))) ||
+      (selectedEquipment === 'machine' && (ex.nameFa.includes('دستگاه') || ex.nameEn.toLowerCase().includes('machine'))) ||
+      (selectedEquipment === 'bodyweight' && (ex.nameFa.includes('بدن') || ex.nameFa.includes('پلانک') || ex.nameFa.includes('پرنده') || ex.nameEn.toLowerCase().includes('bodyweight') || ex.nameEn.toLowerCase().includes('plank'))) ||
+      (selectedEquipment === 'band' && (ex.nameFa.includes('کش') || ex.nameEn.toLowerCase().includes('band'))) ||
+      (selectedEquipment === 'home' && (!ex.nameFa.includes('دستگاه') && !ex.nameFa.includes('سیم')));
+
+    return matchesSearch && matchesMuscle && matchesEquipment;
   });
 
   // Filtered foods
@@ -160,6 +170,8 @@ export const ProgramBuilder = () => {
             <VisualBodyMap
               selectedMuscle={selectedMuscle}
               onSelectMuscle={(m) => setSelectedMuscle(m)}
+              selectedEquipment={selectedEquipment}
+              onSelectEquipment={(eq) => setSelectedEquipment(eq)}
             />
           )}
 

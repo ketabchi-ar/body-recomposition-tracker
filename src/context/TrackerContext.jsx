@@ -38,6 +38,7 @@ export const TrackerProvider = ({ children }) => {
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isAIPlanGenOpen, setIsAIPlanGenOpen] = useState(false);
+  const [isHealthSyncOpen, setIsHealthSyncOpen] = useState(false);
 
   // Selected Day & Active Date
   const [selectedDayId, setSelectedDayId] = useState(getTodayScheduleId);
@@ -70,6 +71,9 @@ export const TrackerProvider = ({ children }) => {
       return initialMeals;
     }
   });
+
+  // Equipment Filter State
+  const [selectedEquipment, setSelectedEquipment] = useState('all');
 
   // Workout Logs: { [dateKey]: { [exerciseId_setIdx]: { done: boolean, weight: string, reps: string, seconds: string } } }
   const [workoutLogs, setWorkoutLogs] = useState(() => {
@@ -111,15 +115,14 @@ export const TrackerProvider = ({ children }) => {
     }
   });
 
-  // Multi-Provider AI Config State
+  // Multi-Provider AI Config State (Single Source of Truth)
   const [aiConfig, setAiConfig] = useState(() => {
     try {
       const saved = localStorage.getItem('fit_tracker_ai_config');
       if (saved) return JSON.parse(saved);
-      const legacyKey = localStorage.getItem('fit_tracker_gemini_api_key');
       return {
         provider: 'gemini',
-        apiKey: legacyKey || '',
+        apiKey: '',
         model: 'gemini-1.5-flash',
         customBaseUrl: ''
       };
@@ -139,6 +142,7 @@ export const TrackerProvider = ({ children }) => {
     title: '',
     nameEn: '',
     youtubeId: '',
+    aparatId: '',
     biomechanics: '',
     calories: 0,
     protein: 0
@@ -270,7 +274,10 @@ export const TrackerProvider = ({ children }) => {
 
   // Actions
   const toggleSetComplete = (exerciseId, setIndex, currentReps = '', currentWeight = '', currentSeconds = '') => {
-    sounds.playBeep(700, 'sine', 0.08);
+    try {
+      sounds.playBeep(700, 'sine', 0.08);
+    } catch {}
+
     setWorkoutLogs(prev => {
       const dayLogs = prev[activeDateKey] || {};
       const key = `${exerciseId}_${setIndex}`;
@@ -328,7 +335,10 @@ export const TrackerProvider = ({ children }) => {
     const prevSet = dayLogs[prevKey];
     if (!prevSet) return;
 
-    sounds.playBeep(800, 'sine', 0.05);
+    try {
+      sounds.playBeep(800, 'sine', 0.05);
+    } catch {}
+
     setWorkoutLogs(prev => {
       const currentLogs = prev[activeDateKey] || {};
       const currentKey = `${exerciseId}_${setIndex}`;
@@ -440,7 +450,10 @@ export const TrackerProvider = ({ children }) => {
   };
 
   const toggleMealComplete = (mealId) => {
-    sounds.playBeep(850, 'triangle', 0.1);
+    try {
+      sounds.playBeep(850, 'triangle', 0.1);
+    } catch {}
+
     setMealLogs(prev => {
       const dayLogs = prev[activeDateKey] || {};
       const next = !dayLogs[mealId];
@@ -473,7 +486,10 @@ export const TrackerProvider = ({ children }) => {
   };
 
   const addWater = (amountMl = 250) => {
-    sounds.playBeep(900, 'sine', 0.12);
+    try {
+      sounds.playBeep(900, 'sine', 0.12);
+    } catch {}
+
     setWaterLogs(prev => {
       const current = prev[activeDateKey] || 0;
       const next = Math.min(5000, current + amountMl);
@@ -495,42 +511,55 @@ export const TrackerProvider = ({ children }) => {
   };
 
   const triggerCelebration = (msg) => {
-    sounds.playCompletionChime();
     try {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
+      sounds.playCompletionChime();
     } catch {}
+    try {
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 60,
+          spread: 60,
+          origin: { y: 0.6 }
+        });
+      }
+    } catch (e) {
+      console.warn('Confetti error safely caught:', e);
+    }
   };
 
   const checkIfAllDoneAndCelebrate = (logs) => {
-    const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
-    if (!selectedDay) return;
-    const workout = workouts[selectedDay.workoutId];
-    if (!workout || !workout.exercises) return;
+    try {
+      const selectedDay = daysSchedule.find(d => d.id === selectedDayId);
+      if (!selectedDay) return;
+      const workout = workouts[selectedDay.workoutId];
+      if (!workout || !workout.exercises) return;
 
-    const dayLogs = logs[activeDateKey] || {};
-    let totalSets = 0;
-    let completedSets = 0;
+      const dayLogs = logs[activeDateKey] || {};
+      let totalSets = 0;
+      let completedSets = 0;
 
-    workout.exercises.forEach(ex => {
-      for (let i = 0; i < ex.setsCount; i++) {
-        totalSets++;
-        if (dayLogs[`${ex.id}_${i}`]?.done) {
-          completedSets++;
+      workout.exercises.forEach(ex => {
+        for (let i = 0; i < (ex.setsCount || 3); i++) {
+          totalSets++;
+          if (dayLogs[`${ex.id}_${i}`]?.done) {
+            completedSets++;
+          }
         }
-      }
-    });
+      });
 
-    if (totalSets > 0 && completedSets === totalSets) {
-      triggerCelebration("عالی بود! تمام ست‌های تمرین امروز با موفقیت تکمیل شد! 💪🔥");
+      if (totalSets > 0 && completedSets === totalSets) {
+        triggerCelebration("عالی بود! تمام ست‌های تمرین امروز با موفقیت تکمیل شد! 💪🔥");
+      }
+    } catch (e) {
+      console.warn('checkIfAllDone error safely caught:', e);
     }
   };
 
   const startRestTimer = (seconds = 60, exerciseName = '') => {
-    sounds.playBeep(520, 'sine', 0.1);
+    try {
+      sounds.playBeep(520, 'sine', 0.1);
+    } catch {}
+
     setRestTimer({
       isRunning: true,
       duration: seconds,
@@ -548,7 +577,8 @@ export const TrackerProvider = ({ children }) => {
       isOpen: true,
       title: exercise.nameFa,
       nameEn: exercise.nameEn,
-      youtubeId: exercise.youtubeId,
+      youtubeId: exercise.youtubeId || '',
+      aparatId: exercise.aparatId || '',
       biomechanics: exercise.biomechanics,
       calories: exercise.calories || (exercise.caloriesPerSet ? exercise.caloriesPerSet * (exercise.setsCount || 3) : 0),
       protein: exercise.proteinRequired
@@ -596,6 +626,7 @@ export const TrackerProvider = ({ children }) => {
             metricType: newExercise.metricType || 'weight_reps',
             biomechanics: newExercise.biomechanics,
             youtubeId: newExercise.youtubeId,
+            aparatId: newExercise.aparatId || '',
             suggestedReps: newExercise.suggestedReps || [12, 10, 8, 8],
             defaultSeconds: newExercise.defaultSeconds || 30
           };
@@ -665,7 +696,7 @@ export const TrackerProvider = ({ children }) => {
       waterLogs,
       aiConfig,
       exportedAt: new Date().toISOString(),
-      version: '3.0'
+      version: '5.0'
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -704,7 +735,7 @@ export const TrackerProvider = ({ children }) => {
     setDietMeals(initialMeals);
     setHasCompletedOnboarding(true);
     setIsOnboardingOpen(false);
-    triggerCelebration("الگوی مرجع اردالان کتابچی بارگذاری شد! 🚀");
+    triggerCelebration("الگوی استاندارد بارگذاری شد! 🚀");
   };
 
   return (
@@ -718,6 +749,8 @@ export const TrackerProvider = ({ children }) => {
         setIsOnboardingOpen,
         isAIPlanGenOpen,
         setIsAIPlanGenOpen,
+        isHealthSyncOpen,
+        setIsHealthSyncOpen,
         selectedDayId,
         setSelectedDayId,
         activeDateKey,
@@ -728,6 +761,8 @@ export const TrackerProvider = ({ children }) => {
         setWorkouts,
         dietMeals,
         setDietMeals,
+        selectedEquipment,
+        setSelectedEquipment,
         workoutLogs,
         toggleSetComplete,
         updateSetValues,

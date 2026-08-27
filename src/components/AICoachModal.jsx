@@ -13,11 +13,13 @@ import {
   Check,
   RefreshCw,
   ExternalLink,
-  ListFilter
+  ListFilter,
+  Activity,
+  HeartPulse
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { AI_PROVIDERS, callAIProvider, generateDailyAIReport, testAIConnection, fetchAvailableModels } from '../utils/aiService';
-import { getPersianDateFormatted } from '../utils/jalali';
+import { getPersianDateFormatted, toPersianDigits } from '../utils/jalali';
 
 export const AICoachModal = () => {
   const { 
@@ -33,7 +35,8 @@ export const AICoachModal = () => {
     waterLogs, 
     activeDateKey, 
     daysSchedule, 
-    workouts 
+    workouts,
+    dietMeals 
   } = useTracker();
 
   const [activeTab, setActiveTab] = useState(aiCoachModal.initialTab || 'daily');
@@ -58,13 +61,22 @@ export const AICoachModal = () => {
   const [chatMessages, setChatMessages] = useState([
     {
       role: 'assistant',
-      text: `سلام ${profile.name || 'ورزشکار عزیز'}! من مربی هوش مصنوعی شما هستم. هر سوالی درباره اجرای حرکات، تنظیم رژیم غذایی یا نکات سلامتی دیسک کمر دارید بپرسید.`
+      text: `سلام ${profile.name || 'ورزشکار عزیز'}! من مربی هوش مصنوعی شما هستم. تمام اطلاعات قد (${profile.height})، وزن (${profile.weight})، هدف (${profile.goal}) و تمرینات امروز را در اختیار دارم. هر سوالی درباره تحلیل وضعیت، رژیم یا حرکات دارید بپرسید یا از گزینه‌های سریع زیر استفاده کنید.`
     }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   const selectedProviderInfo = AI_PROVIDERS.find(p => p.id === provider) || AI_PROVIDERS[0];
+
+  // Quick Action Interactive Chips
+  const quickChips = [
+    'وضعیت پیشرفت و کالری امروز من چطوره؟',
+    'توصیه برای اصلاح گودی کمر و ارگونومی پشت میز',
+    'یک شام پروتئینی مناسب امشب پیشنهاد بده',
+    'نکات ایمنی دیسک کمر در تمرین امروز',
+    'چگونه سرعت چربی‌سوزی را افزایش دهم؟'
+  ];
 
   const handleFetchModels = async () => {
     if (!apiKey) {
@@ -79,11 +91,11 @@ export const AICoachModal = () => {
         if (!list.includes(model)) {
           setModel(list[0]);
         }
-        setTestResult({ success: true, msg: `${list.length} مدل با موفقیت از سرور ${selectedProviderInfo.name} لود شد!` });
+        setTestResult({ success: true, msg: `${toPersianDigits(list.length)} مدل با موفقیت لود شد!` });
       } else {
         setModelsList(selectedProviderInfo.popularModels || []);
       }
-    } catch (e) {
+    } catch {
       setModelsList(selectedProviderInfo.popularModels || []);
     } finally {
       setIsFetchingModels(false);
@@ -98,7 +110,7 @@ export const AICoachModal = () => {
       model: model || selectedProviderInfo.defaultModel,
       customBaseUrl: customBaseUrl.trim()
     });
-    setTestResult({ success: true, msg: 'تنظیمات هوش مصنوعی با موفقیت ذخیره شد! ✅' });
+    setTestResult({ success: true, msg: 'تنظیمات هوش مصنوعی ذخیره شد! ✅' });
     setTimeout(() => setTestResult({ success: false, msg: '' }), 3000);
   };
 
@@ -154,34 +166,63 @@ export const AICoachModal = () => {
     }
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim() || isChatLoading) return;
+  const executeSendMessage = async (textToSend) => {
+    if (!textToSend.trim() || isChatLoading) return;
     if (!aiConfig.apiKey) {
       alert("لطفاً ابتدا کلید API خود را در تب تنظیمات هوش مصنوعی وارد کنید.");
       setActiveTab('settings');
       return;
     }
 
-    const userText = chatInput.trim();
-    const newMessages = [...chatMessages, { role: 'user', text: userText }];
+    const newMessages = [...chatMessages, { role: 'user', text: textToSend }];
     setChatMessages(newMessages);
     setChatInput('');
     setIsChatLoading(true);
 
     try {
-      const systemInstruction = `شما مربی ارشد تناسب اندام و متخصص تغذیه بالینی هستید. مخاطب شما ${profile.name || 'ورزشکار'} است. پاسخ‌ها صمیمی، دقیق، به زبان فارسی و با نکات بیومکانیک ارائه شود.`;
+      // Deep Context Injection so AI knows EVERYTHING about the user and doesn't ask repetitive questions
+      const currentDay = daysSchedule.find(d => d.id === selectedDayId);
+      const workoutDetail = workouts[currentDay?.workoutId];
+      const todayDoneSets = Object.values(workoutLogs[activeDateKey] || {}).filter(s => s?.done).length;
+      const todayDoneMeals = Object.values(mealLogs[activeDateKey] || {}).filter(Boolean).length;
+      const todayWater = waterLogs[activeDateKey] || 0;
+
+      const systemInstruction = `شما مربی ارشد و هوشمند تناسب اندام، فیزیولوژیست ورزشی و متخصص تغذیه بالینی هستید.
+اطلاعات دقیق ورزشکار (کانتکست زنده):
+- نام: ${profile.name || 'ورزشکار'}
+- سن: ${profile.age} | قد: ${profile.height} | وزن: ${profile.weight}
+- درصد چربی: ${profile.fatPercentage} | توده عضلانی: ${profile.muscleMass}
+- متابولیسم پایه (BMR): ${profile.bmr}
+- هدف اصلی: ${profile.goal}
+- کالری هدف روزانه: ${profile.dailyTargetCalories} kcal | پروتئین هدف: ${profile.dailyTargetProtein} g
+- ساعت کار روزانه پشت میز: ${profile.deskHours || 8} ساعت
+- جلسه تمرین امروز (${currentDay?.dayName || 'امروز'}): ${workoutDetail?.title || 'تمرین'}
+- تعداد ست‌های تکمیل‌شده امروز: ${todayDoneSets} ست
+- تعداد وعده‌های مصرف‌شده امروز: ${todayDoneMeals} از ${dietMeals.length} وعده
+- آب مصرف‌شده امروز: ${todayWater} میلی‌لیتر
+
+دستورالعمل لحن و رفتار:
+۱. شما از قبل تمام مشخصات فوق را می‌دانید، هرگز سوالات تکراری درباره قد، وزن یا هدف از کاربر نپرسید.
+۲. وضعیت کاربر را بر اساس داده‌های فوق مستقیماً تحلیل کنید.
+۳. در انتهای پاسخ در صورت لزوم، گزینه‌های چندگزینه‌ای کوتاه ارائه دهید.
+۴. زبان پاسخ فارسی علمی، انگیزشی، صمیمی و با ایموجی‌های مناسب باشد.`;
+
       const aiReply = await callAIProvider({
         ...aiConfig,
-        prompt: userText,
+        prompt: textToSend,
         systemInstruction
       });
       setChatMessages([...newMessages, { role: 'assistant', text: aiReply }]);
     } catch (err) {
-      setChatMessages([...newMessages, { role: 'assistant', text: `خطا: ${err.message}` }]);
+      setChatMessages([...newMessages, { role: 'assistant', text: `خطا در ارتباط: ${err.message}` }]);
     } finally {
       setIsChatLoading(false);
     }
+  };
+
+  const handleSendMessageForm = (e) => {
+    e.preventDefault();
+    executeSendMessage(chatInput);
   };
 
   const availableOptions = modelsList.length > 0 ? modelsList : selectedProviderInfo.popularModels;
@@ -199,14 +240,14 @@ export const AICoachModal = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base sm:text-lg font-black text-white">
-                  مربی و تحلیلگر هوش مصنوعی (AI Fitness Hub)
+                  مربی و هسته هوشمند هوش مصنوعی (AI Central Coach)
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {selectedProviderInfo.name}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                پشتیبانی از Gemini، OpenRouter، OpenAI، AvalAI و GapGPT
+                تزریق هوشمند کانتکست پروفایل و تحلیل وضعیت بیومکانیک بدن
               </p>
             </div>
           </div>
@@ -242,7 +283,7 @@ export const AICoachModal = () => {
             }`}
           >
             <MessageSquare className="w-4 h-4" />
-            <span>چت با مربی AI</span>
+            <span>چت تعاملی با مربی AI</span>
           </button>
 
           <button
@@ -254,7 +295,7 @@ export const AICoachModal = () => {
             }`}
           >
             <Settings2 className="w-4 h-4" />
-            <span>تنظیمات شرکت‌ها و انتخاب مدل</span>
+            <span>پیکربندی کلید و انتخاب مدل</span>
           </button>
         </div>
 
@@ -294,16 +335,16 @@ export const AICoachModal = () => {
                   <div className="p-8 text-center rounded-2xl bg-slate-950/40 border border-dashed border-slate-800 text-slate-400 text-xs space-y-2">
                     <Bot className="w-10 h-10 mx-auto text-slate-600 mb-2" />
                     <p>هنوز تحلیلی برای امروز تولید نشده است.</p>
-                    <p className="text-slate-500">برای دریافت تحلیل عمیق تمرین و تغذیه روی دکمه «تولید گزارش هوشمند» کلیک کنید.</p>
+                    <p className="text-slate-500">برای دریافت تحلیل عمیق روی دکمه «تولید گزارش هوشمند» کلیک کنید.</p>
                   </div>
                 )
               )}
             </div>
           )}
 
-          {/* TAB 2: CHAT */}
+          {/* TAB 2: CHAT WITH QUICK CHIPS */}
           {activeTab === 'chat' && (
-            <div className="flex flex-col h-[400px]">
+            <div className="flex flex-col h-[450px]">
               <div className="flex-1 overflow-y-auto space-y-3 p-2">
                 {chatMessages.map((msg, index) => (
                   <div
@@ -318,9 +359,9 @@ export const AICoachModal = () => {
                       </div>
                     )}
                     <div
-                      className={`p-3.5 rounded-2xl max-w-[80%] leading-relaxed whitespace-pre-line ${
+                      className={`p-3.5 rounded-2xl max-w-[85%] leading-relaxed whitespace-pre-line ${
                         msg.role === 'user'
-                          ? 'bg-emerald-600 text-white rounded-br-none'
+                          ? 'bg-emerald-600 text-white rounded-br-none shadow-md'
                           : 'bg-slate-950 border border-slate-850 text-slate-200 rounded-bl-none'
                       }`}
                     >
@@ -331,15 +372,30 @@ export const AICoachModal = () => {
                 {isChatLoading && (
                   <div className="flex items-center gap-2 text-xs text-slate-400 p-2">
                     <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-                    <span>مربی AI در حال پاسخ...</span>
+                    <span>مربی AI در حال تحلیل داده‌های شما و پاسخ...</span>
                   </div>
                 )}
               </div>
 
-              <form onSubmit={handleSendMessage} className="pt-3 border-t border-slate-800 flex items-center gap-2">
+              {/* Quick Action Interactive Chips */}
+              <div className="py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-t border-slate-800/80">
+                {quickChips.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => executeSendMessage(chip)}
+                    disabled={isChatLoading}
+                    className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-emerald-950/40 text-slate-300 hover:text-emerald-300 border border-slate-800 hover:border-emerald-500/30 whitespace-nowrap text-[11px] transition"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+
+              <form onSubmit={handleSendMessageForm} className="pt-2 border-t border-slate-800 flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="سوال خود را بپرسید..."
+                  placeholder="سوال خود را بنویسید یا از گزینه‌های بالا انتخاب کنید..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -355,7 +411,7 @@ export const AICoachModal = () => {
             </div>
           )}
 
-          {/* TAB 3: PROVIDER & API KEY SETTINGS */}
+          {/* TAB 3: UNIFIED AI CONFIG */}
           {activeTab === 'settings' && (
             <div className="space-y-4">
               {/* Provider Selector Cards */}
@@ -446,17 +502,6 @@ export const AICoachModal = () => {
                       </option>
                     ))}
                   </select>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500">یا نام مدل سفارشی:</span>
-                    <input
-                      type="text"
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      placeholder="نام مدل..."
-                      className="flex-1 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-750 text-white font-mono text-[11px]"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -490,7 +535,7 @@ export const AICoachModal = () => {
                   className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black transition shadow-lg shadow-emerald-500/20"
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
-                  <span>ذخیره تنظیمات</span>
+                  <span>ذخیره تنظیمات هوش مصنوعی</span>
                 </button>
               </div>
             </div>

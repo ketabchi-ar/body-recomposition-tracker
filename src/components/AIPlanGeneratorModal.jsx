@@ -56,7 +56,7 @@ export const AIPlanGeneratorModal = ({ isOpen, onClose }) => {
 
       // Mifflin-St Jeor Formula
       let bmr = Math.round(10 * weightNum + 6.25 * heightNum - 5 * ageNum + (formData.gender === 'مرد' ? 5 : -161));
-      let targetCalories = Math.round(bmr * 1.4);
+      let targetCalories = Math.round(bmr * 1.35);
       let targetProtein = Math.round(weightNum * 2.2);
 
       if (formData.goal.includes('کاهش')) {
@@ -85,13 +85,13 @@ export const AIPlanGeneratorModal = ({ isOpen, onClose }) => {
           id: 'sunday',
           dayIndex: 0,
           dayName: 'یکشنبه',
-          title: 'تمرین قدرتی - جلسه اول (Upper Body / Push & Pull)',
+          title: 'تمرین قدرتی - جلسه اول (Upper Body)',
           type: 'strength',
           category: 'بالاتنه قدرتی',
           wakeUpTime: '۰۶:۳۰',
           startTime: '۱۷:۳۰',
           duration: '۵۰ دقیقه',
-          target: 'تمرکز روی الگوی پرس سینه، زیربغل لت و سرشانه',
+          target: 'پرس سینه، زیربغل لت و سرشانه با حفظ سلامت دیسک کمر',
           workoutId: 'plan_day_sun'
         },
         {
@@ -104,7 +104,7 @@ export const AIPlanGeneratorModal = ({ isOpen, onClose }) => {
           wakeUpTime: '۰۶:۳۰',
           startTime: '۱۷:۳۰',
           duration: '۵۰ دقیقه',
-          target: 'تمرکز روی گابلت اسکوات، ددلیفت RDL و ثبات ستون فقرات',
+          target: 'گابلت اسکوات، ددلیفت RDL و ثبات ستون فقرات',
           workoutId: 'plan_day_mon'
         },
         {
@@ -232,8 +232,8 @@ export const AIPlanGeneratorModal = ({ isOpen, onClose }) => {
         {
           id: 'm_breakfast',
           time: '۰۷:۰۰ - ۰۷:۳۰',
-          title: 'صبحانه کامل و پروتئینی',
-          subtitle: 'تخم‌مرغ + نان سنگک + چای سبز',
+          title: 'صبحانه کامل پروتئینی',
+          subtitle: 'تخم‌مرغ + نان سنگک + عدسی',
           items: ['۳ عدد تخم‌مرغ کامل', '۱ کف دست نان سنگک (۳۰g)', '۱ پیاله عدسی پخته', '۱ لیوان چای سبز'],
           calories: 420,
           protein: 30,
@@ -255,7 +255,7 @@ export const AIPlanGeneratorModal = ({ isOpen, onClose }) => {
           id: 'm_lunch',
           time: '۱۳:۳۰',
           title: 'ناهار پروتئینی و کربوهیدرات کمپلکس',
-          subtitle: 'فیله مرغ/گوشت + برنج کته + سالاد',
+          subtitle: 'فیله مرغ + برنج کته + سالاد',
           items: ['۱۸۰ گرم فیله مرغ یا راسته گوساله پخته', '۸ قاشق برنج کته', '۱ پیاله ماست یونانی', '۱ ظرف سالاد با روغن زیتون'],
           calories: 620,
           protein: 55,
@@ -267,7 +267,7 @@ export const AIPlanGeneratorModal = ({ isOpen, onClose }) => {
           time: '۱۶:۳۰',
           title: 'پیش از تمرین',
           subtitle: 'انرژی و تمرکز',
-          items: ['۱ فنجان قهوه اسپرسو یا قرص کافئین', '۱ عدد موز متوسط', '۴ عدد قرص BCAA'],
+          items: ['۱ فنجان قهوه اسپرسو', '۱ عدد موز متوسط', '۴ عدد قرص BCAA'],
           calories: 120,
           protein: 5,
           icon: 'Zap',
@@ -360,7 +360,7 @@ export const AIPlanGeneratorModal = ({ isOpen, onClose }) => {
       onClose();
       alert('برنامه اختصاصی شما توسط هوش مصنوعی با موفقیت ساخته شد! 🤖✨');
     } catch (err) {
-      setErrorMsg(err.message || 'خطا در ارتباط با هوش مصنوعی ابری');
+      setErrorMsg(`خطا در ارتباط با هوش مصنوعی ابری (${err.message}). می‌توانید از دکمه «ساخت فوری با الگوریتم علمی» به صورت کاملاً آفلاین استفاده نمایید.`);
       setIsLoading(false);
     }
   };

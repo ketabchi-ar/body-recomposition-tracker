@@ -1,74 +1,66 @@
-// Web Audio API beep generator for Rest Timer
+// Web Audio API Sound Generator with safe error boundaries
+
 class SoundEffects {
   constructor() {
-    this.ctx = null;
+    this.audioCtx = null;
   }
 
   init() {
-    if (!this.ctx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        this.ctx = new AudioContext();
+    try {
+      if (!this.audioCtx && typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        this.audioCtx = new AudioContextClass();
       }
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+    } catch (e) {
+      console.warn('Audio Context init error:', e);
     }
   }
 
-  playBeep(freq = 600, type = 'sine', duration = 0.15) {
+  playBeep(freq = 600, type = 'sine', duration = 0.1) {
     try {
       this.init();
-      if (!this.ctx) return;
+      if (!this.audioCtx) return;
 
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
 
       osc.type = type;
-      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
 
-      gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+      gain.gain.setValueAtTime(0.08, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
 
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.audioCtx.destination);
 
       osc.start();
-      osc.stop(this.ctx.currentTime + duration);
+      osc.stop(this.audioCtx.currentTime + duration);
     } catch (e) {
-      console.warn("Audio playback error:", e);
-    }
-  }
-
-  playCompletionChime() {
-    try {
-      this.init();
-      if (!this.ctx) return;
-
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-      notes.forEach((freq, index) => {
-        setTimeout(() => {
-          this.playBeep(freq, 'triangle', 0.25);
-        }, index * 120);
-      });
-    } catch (e) {
-      console.warn("Audio chime error:", e);
+      console.warn('Audio playBeep error:', e);
     }
   }
 
   playTimerAlert() {
     try {
-      this.init();
-      if (!this.ctx) return;
-
-      const tones = [880, 880, 1174.66]; // A5, A5, D6
-      tones.forEach((freq, index) => {
-        setTimeout(() => {
-          this.playBeep(freq, 'sine', 0.18);
-        }, index * 180);
-      });
+      this.playBeep(880, 'triangle', 0.2);
+      setTimeout(() => this.playBeep(880, 'triangle', 0.2), 250);
+      setTimeout(() => this.playBeep(1174, 'sine', 0.4), 500);
     } catch (e) {
-      console.warn("Timer alert error:", e);
+      console.warn('Audio playTimerAlert error:', e);
+    }
+  }
+
+  playCompletionChime() {
+    try {
+      this.playBeep(523.25, 'sine', 0.15); // C5
+      setTimeout(() => this.playBeep(659.25, 'sine', 0.15), 100); // E5
+      setTimeout(() => this.playBeep(783.99, 'sine', 0.15), 200); // G5
+      setTimeout(() => this.playBeep(1046.50, 'sine', 0.35), 300); // C6
+    } catch (e) {
+      console.warn('Audio playCompletionChime error:', e);
     }
   }
 }

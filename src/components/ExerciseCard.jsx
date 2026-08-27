@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Play, 
   Check, 
@@ -11,7 +11,10 @@ import {
   Dumbbell,
   Trash2,
   Plus,
-  Minus
+  Minus,
+  Video,
+  X,
+  Edit
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { toPersianDigits } from '../utils/jalali';
@@ -27,8 +30,15 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
     openVideoModal, 
     openSubstituteModal, 
     startRestTimer, 
-    activeDateKey 
+    activeDateKey,
+    setWorkouts 
   } = useTracker();
+
+  const [isEditVideoOpen, setIsEditVideoOpen] = useState(false);
+  const [videoInputs, setVideoInputs] = useState({
+    youtubeId: exercise.youtubeId || '',
+    aparatId: exercise.aparatId || ''
+  });
 
   const dayLogs = workoutLogs[activeDateKey] || {};
 
@@ -41,6 +51,29 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
   const isFullyDone = completedCount === (exercise.setsCount || 3);
   const isTimeBased = exercise.metricType === 'time_seconds';
   const hasVideo = Boolean(exercise.youtubeId || exercise.aparatId);
+
+  const handleSaveVideo = (e) => {
+    e.preventDefault();
+    setWorkouts(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(wKey => {
+        if (next[wKey].exercises) {
+          next[wKey].exercises = next[wKey].exercises.map(ex => {
+            if (ex.id === exercise.id) {
+              return {
+                ...ex,
+                youtubeId: videoInputs.youtubeId.trim(),
+                aparatId: videoInputs.aparatId.trim()
+              };
+            }
+            return ex;
+          });
+        }
+      });
+      return next;
+    });
+    setIsEditVideoOpen(false);
+  };
 
   return (
     <div className={`rounded-3xl border transition-all duration-200 overflow-hidden ${
@@ -103,6 +136,14 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
               </button>
             )}
 
+            <button
+              onClick={() => setIsEditVideoOpen(true)}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700 transition"
+              title="ویرایش لینک ویدیو (یوتیوب / آپارات)"
+            >
+              <Video className="w-4 h-4" />
+            </button>
+
             {dayId && (
               <button
                 onClick={() => removeExerciseFromDay(dayId, exercise.id)}
@@ -161,7 +202,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
           )}
         </div>
 
-        {/* Biomechanics Injury Prevention Guide */}
+        {/* Biomechanics Note */}
         {exercise.biomechanics && (
           <div className="mt-3 p-3 rounded-xl bg-slate-950/70 border border-emerald-500/20 flex items-start gap-2 text-xs text-slate-200 leading-relaxed">
             <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
@@ -295,6 +336,56 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
           })}
         </div>
       </div>
+
+      {/* Edit Video URL Modal */}
+      {isEditVideoOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-md bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                <Video className="w-4 h-4 text-emerald-400" />
+                <span>ویرایش ویدیو حرکت: {exercise.nameFa}</span>
+              </h3>
+              <button onClick={() => setIsEditVideoOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveVideo} className="p-5 space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-300 mb-1">شناسه یا لینک ویدیو در یوتیوب (YouTube ID):</label>
+                <input
+                  type="text"
+                  placeholder="مثال: VmB1G1K7v94 یا لینک کامل یوتیوب"
+                  value={videoInputs.youtubeId}
+                  onChange={(e) => setVideoInputs({ ...videoInputs, youtubeId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono"
+                  dir="ltr"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1">شناسه یا لینک ویدیو در آپارات (Aparat ID):</label>
+                <input
+                  type="text"
+                  placeholder="مثال: a1b2c3d یا لینک کامل ویدیوی آپارات"
+                  value={videoInputs.aparatId}
+                  onChange={(e) => setVideoInputs({ ...videoInputs, aparatId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono"
+                  dir="ltr"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black transition"
+              >
+                ذخیره لینک ویدیو
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

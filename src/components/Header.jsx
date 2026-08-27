@@ -72,7 +72,7 @@ export const Header = () => {
                     پلتفرم هوشمند تناسب اندام
                   </h1>
                   <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950">
-                    V4.0 PRO
+                    V5.0 PRO
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
@@ -83,6 +83,13 @@ export const Header = () => {
             </div>
 
             <div className="flex items-center gap-1.5 md:hidden">
+              <button
+                onClick={() => setIsHealthSyncOpen(true)}
+                className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20"
+                title="هاب همگام‌سازی سلامت"
+              >
+                <HeartPulse className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => setAiCoachModal({ isOpen: true, initialTab: 'daily' })}
                 className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
@@ -100,13 +107,23 @@ export const Header = () => {
             </div>
           </div>
 
-          {/* Action Buttons: Persian Date, Focus Mode, AI Coach & Settings */}
+          {/* Action Buttons: Persian Date, Focus Mode, Health Hub, AI Coach & Settings */}
           <div className="flex items-center justify-between md:justify-end gap-2.5 flex-wrap">
             {/* Persian Date Badge */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-emerald-400 font-bold">
               <CalendarDays className="w-3.5 h-3.5 text-emerald-400" />
               <span>{getPersianDateFormatted()}</span>
             </div>
+
+            {/* Health Hub Button */}
+            <button
+              onClick={() => setIsHealthSyncOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 text-xs font-bold transition"
+              title="همگام‌سازی با Google Fit، Samsung Health و Strava"
+            >
+              <HeartPulse className="w-3.5 h-3.5 text-sky-400" />
+              <span>هاب سلامت</span>
+            </button>
 
             {/* Focus Mode Button */}
             <button
