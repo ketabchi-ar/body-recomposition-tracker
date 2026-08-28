@@ -17,6 +17,9 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { AIPlanGeneratorModal } from './components/AIPlanGeneratorModal';
 import { HealthSyncModal } from './components/HealthSyncModal';
 import { RestTimerFloat } from './components/RestTimerFloat';
+import { StickySessionBar } from './components/StickySessionBar';
+import { AIFoodScannerModal } from './components/AIFoodScannerModal';
+import { WorkoutSummaryCardModal } from './components/WorkoutSummaryCardModal';
 
 const MainContent = () => {
   const { activeTab } = useTracker();
@@ -42,14 +45,27 @@ export function App() {
 }
 
 const AppContent = () => {
-  const { isAIPlanGenOpen, setIsAIPlanGenOpen, isHealthSyncOpen, setIsHealthSyncOpen, toastMessage } = useTracker();
+  const { 
+    isAIPlanGenOpen, 
+    setIsAIPlanGenOpen, 
+    isHealthSyncOpen, 
+    setIsHealthSyncOpen, 
+    isFoodScannerOpen,
+    setIsFoodScannerOpen,
+    isStoryCardOpen,
+    setIsStoryCardOpen,
+    toastMessage 
+  } = useTracker();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col relative" dir="rtl">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col relative pb-16" dir="rtl">
       <Header />
       <div className="flex-1">
         <MainContent />
       </div>
+
+      {/* Sticky Mobile/Desktop Session Progress Bar */}
+      <StickySessionBar onOpenStoryCard={() => setIsStoryCardOpen(true)} />
 
       {/* Floating Celebration Toast */}
       {toastMessage && (
@@ -66,6 +82,8 @@ const AppContent = () => {
       <FocusModeModal />
       <GoogleDriveSyncModal />
       <HealthSyncModal isOpen={isHealthSyncOpen} onClose={() => setIsHealthSyncOpen(false)} />
+      <AIFoodScannerModal isOpen={isFoodScannerOpen} onClose={() => setIsFoodScannerOpen(false)} />
+      <WorkoutSummaryCardModal isOpen={isStoryCardOpen} onClose={() => setIsStoryCardOpen(false)} />
       <SettingsModal />
       <OnboardingModal />
       <AIPlanGeneratorModal isOpen={isAIPlanGenOpen} onClose={() => setIsAIPlanGenOpen(false)} />

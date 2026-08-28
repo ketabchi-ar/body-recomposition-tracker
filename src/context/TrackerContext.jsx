@@ -163,6 +163,8 @@ export const TrackerProvider = ({ children }) => {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGDriveModalOpen, setIsGDriveModalOpen] = useState(false);
+  const [isFoodScannerOpen, setIsFoodScannerOpen] = useState(false);
+  const [isStoryCardOpen, setIsStoryCardOpen] = useState(false);
 
   // Rest Timer State
   const [restTimer, setRestTimer] = useState({
@@ -191,6 +193,15 @@ export const TrackerProvider = ({ children }) => {
 
   // Active Main Tab
   const [activeTab, setActiveTab] = useState('workout');
+
+  // Request Notification permission on first user interaction
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      try {
+        Notification.requestPermission();
+      } catch {}
+    }
+  }, []);
 
   // Persistence Effects
   useEffect(() => {
@@ -776,6 +787,10 @@ export const TrackerProvider = ({ children }) => {
         setIsSettingsOpen,
         isGDriveModalOpen,
         setIsGDriveModalOpen,
+        isFoodScannerOpen,
+        setIsFoodScannerOpen,
+        isStoryCardOpen,
+        setIsStoryCardOpen,
         restTimer,
         startRestTimer,
         stopRestTimer,

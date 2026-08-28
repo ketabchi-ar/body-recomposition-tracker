@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { toPersianDigits } from '../utils/jalali';
+import { RecompCharts } from './RecompCharts';
 
 export const ProgressDashboard = () => {
   const { 
@@ -122,6 +123,9 @@ export const ProgressDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Recomposition Progress & Adherence Charts */}
+      <RecompCharts />
 
       {/* Target Metrics vs Current Status */}
       <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-md space-y-4">

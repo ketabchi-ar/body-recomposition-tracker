@@ -14,14 +14,16 @@ import {
   Minus,
   Video,
   X,
-  Edit
+  Edit,
+  History,
+  Activity
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { toPersianDigits } from '../utils/jalali';
 
 export const ExerciseCard = ({ exercise, index, dayId }) => {
   const { 
-    workoutLogs, 
+    workoutLogs = {}, 
     toggleSetComplete, 
     updateSetValues, 
     copyFromPreviousSet, 
@@ -40,7 +42,26 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
     aparatId: exercise.aparatId || ''
   });
 
-  const dayLogs = workoutLogs[activeDateKey] || {};
+  // Touch Swipe tracking
+  const [touchStartX, setTouchStartX] = useState(null);
+
+  const dayLogs = (workoutLogs && workoutLogs[activeDateKey]) ? workoutLogs[activeDateKey] : {};
+
+  // Find previous session log for ghost text
+  let prevWeightHint = '';
+  let prevRepsHint = '';
+  try {
+    const dates = Object.keys(workoutLogs || {}).filter(d => d !== activeDateKey).sort();
+    if (dates.length > 0) {
+      const prevDateKey = dates[dates.length - 1];
+      const prevDayObj = workoutLogs[prevDateKey];
+      if (prevDayObj) {
+        const prevSet0 = prevDayObj[`${exercise.id}_0`];
+        if (prevSet0?.weight) prevWeightHint = prevSet0.weight;
+        if (prevSet0?.reps) prevRepsHint = prevSet0.reps;
+      }
+    }
+  } catch {}
 
   let completedCount = 0;
   for (let i = 0; i < (exercise.setsCount || 3); i++) {
@@ -51,6 +72,26 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
   const isFullyDone = completedCount === (exercise.setsCount || 3);
   const isTimeBased = exercise.metricType === 'time_seconds';
   const hasVideo = Boolean(exercise.youtubeId || exercise.aparatId);
+
+  const handleTouchStart = (e) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e, setIdx, setData, suggestedRep) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX - touchEndX;
+
+    // Swipe Left (> 60px): toggle set complete
+    if (diff > 60) {
+      toggleSetComplete(exercise.id, setIdx, setData.reps || suggestedRep, setData.weight, setData.seconds);
+    }
+    // Swipe Right (< -60px): trigger rest timer
+    else if (diff < -60) {
+      startRestTimer(60, `${exercise.nameFa} - ست ${setIdx + 1}`);
+    }
+    setTouchStartX(null);
+  };
 
   const handleSaveVideo = (e) => {
     e.preventDefault();
@@ -101,8 +142,9 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                   {exercise.nameFa}
                 </h3>
                 {exercise.targetMuscle && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                    {exercise.targetMuscle}
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1">
+                    <Activity className="w-3 h-3 text-emerald-400" />
+                    <span>{exercise.targetMuscle}</span>
                   </span>
                 )}
               </div>
@@ -156,7 +198,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
           </div>
         </div>
 
-        {/* Badges & Set Adjuster */}
+        {/* Badges, Ghost Text & Set Adjuster */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 mt-3 pt-2.5 border-t border-slate-800/60 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
@@ -164,17 +206,17 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
               <span>{isTimeBased ? `زمان: ${exercise.setsReps}` : `ست و تکرار: ${toPersianDigits(exercise.setsCount || 3)} ست`}</span>
             </span>
 
-            {exercise.calories > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 text-amber-300 border border-slate-700/60 font-mono">
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span>{toPersianDigits(exercise.calories)} kcal</span>
+            {prevWeightHint && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 text-cyan-300 border border-cyan-500/30 text-[11px]">
+                <History className="w-3 h-3 text-cyan-400" />
+                <span>جلسه قبل: {toPersianDigits(prevWeightHint)}kg × {toPersianDigits(prevRepsHint || 10)}</span>
               </span>
             )}
 
-            {exercise.proteinRequired > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 text-cyan-300 border border-slate-700/60 font-mono">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{toPersianDigits(exercise.proteinRequired)}g پروتئین</span>
+            {exercise.calories > 0 && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 text-amber-300 border border-slate-700/60">
+                <Flame className="w-3.5 h-3.5 text-amber-400" />
+                <span>{toPersianDigits(exercise.calories)} kcal</span>
               </span>
             )}
           </div>
@@ -190,7 +232,7 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
               >
                 <Minus className="w-3 h-3" />
               </button>
-              <span className="font-bold text-white px-1 font-mono">{toPersianDigits(exercise.setsCount || 3)}</span>
+              <span className="font-bold text-white px-1">{toPersianDigits(exercise.setsCount || 3)}</span>
               <button
                 onClick={() => updateExerciseSetsCount(dayId, exercise.id, 1)}
                 disabled={(exercise.setsCount || 3) >= 8}
@@ -214,10 +256,10 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
         )}
       </div>
 
-      {/* Sets Tracker Interactive Grid */}
+      {/* Sets Tracker Interactive Grid with Touch Gestures */}
       <div className="p-4 sm:p-5 bg-slate-950/40 space-y-2">
         <div className="flex items-center justify-between text-xs text-slate-400 mb-1 px-1">
-          <span className="font-semibold text-slate-300">ثبت ست‌ها و تکرارها:</span>
+          <span className="font-semibold text-slate-300">ثبت ست‌ها و تکرارها (سوایپ چپ = ثبت ست | سوایپ راست = تایمر):</span>
           <span>{toPersianDigits(completedCount)} از {toPersianDigits(exercise.setsCount || 3)} ست تکمیل شده</span>
         </div>
 
@@ -231,7 +273,9 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
             return (
               <div
                 key={setIdx}
-                className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-xl border transition-all ${
+                onTouchStart={handleTouchStart}
+                onTouchEnd={(e) => handleTouchEnd(e, setIdx, setData, suggestedRep)}
+                className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-xl border transition-all select-none ${
                   isDone
                     ? 'bg-emerald-950/20 border-emerald-500/40 text-white'
                     : 'bg-slate-900/90 border-slate-800 text-slate-300'
@@ -245,22 +289,22 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                     ست {toPersianDigits(setIdx + 1)}
                   </span>
                   {suggestedRep && (
-                    <span className="text-[11px] text-slate-400 font-mono">
+                    <span className="text-[11px] text-slate-400">
                       ({toPersianDigits(suggestedRep)} تکرار)
                     </span>
                   )}
                 </div>
 
-                {/* Inputs: Weight & Reps OR Seconds */}
+                {/* Inputs: Weight & Reps OR Seconds with Ghost Placeholders */}
                 <div className="flex items-center gap-2 flex-1 max-w-xs">
                   {isTimeBased ? (
                     <div className="flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 flex-1">
                       <input
                         type="text"
-                        placeholder="مدت زمان"
-                        value={toPersianDigits(setData.seconds || '')}
+                        placeholder={prevRepsHint ? `${prevRepsHint}s` : 'مدت زمان'}
+                        value={setData.seconds || ''}
                         onChange={(e) => updateSetValues(exercise.id, setIdx, 'seconds', e.target.value)}
-                        className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
+                        className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center"
                       />
                       <span className="text-[10px] text-slate-400">ثانیه</span>
                     </div>
@@ -269,10 +313,10 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                       <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 flex-1">
                         <input
                           type="text"
-                          placeholder="وزنه"
-                          value={toPersianDigits(setData.weight || '')}
+                          placeholder={prevWeightHint ? `${prevWeightHint}kg` : 'وزنه'}
+                          value={setData.weight || ''}
                           onChange={(e) => updateSetValues(exercise.id, setIdx, 'weight', e.target.value)}
-                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
+                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center"
                         />
                         <span className="text-[10px] text-slate-400">kg</span>
                       </div>
@@ -280,10 +324,10 @@ export const ExerciseCard = ({ exercise, index, dayId }) => {
                       <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 flex-1">
                         <input
                           type="text"
-                          placeholder="تکرار"
-                          value={toPersianDigits(setData.reps || '')}
+                          placeholder={prevRepsHint ? `${prevRepsHint}` : 'تکرار'}
+                          value={setData.reps || ''}
                           onChange={(e) => updateSetValues(exercise.id, setIdx, 'reps', e.target.value)}
-                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center font-mono"
+                          className="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none text-center"
                         />
                         <span className="text-[10px] text-slate-400">تکرار</span>
                       </div>

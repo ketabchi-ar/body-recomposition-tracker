@@ -21,7 +21,8 @@ import {
   ArrowRightLeft, 
   Trash2, 
   X,
-  Search
+  Search,
+  Camera
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { foodsBank } from '../data/foodsBank';
@@ -41,7 +42,8 @@ export const DietSection = () => {
     activeDateKey, 
     profile, 
     addMeal, 
-    removeMeal 
+    removeMeal,
+    setIsFoodScannerOpen
   } = useTracker();
 
   const [isAddMealModalOpen, setIsAddMealModalOpen] = useState(false);
@@ -180,11 +182,19 @@ export const DietSection = () => {
 
           <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
             <button
-              onClick={() => setIsAddMealModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:scale-105"
+              onClick={() => setIsFoodScannerOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-black text-xs transition shadow-lg shadow-cyan-500/20 hover:scale-105"
             >
-              <Plus className="w-4 h-4" />
-              <span>افزودن وعده با جستجوی هوشمند غذاها</span>
+              <Camera className="w-4 h-4" />
+              <span>اسکنر هوشمند غذا (عکس و سنتی)</span>
+            </button>
+
+            <button
+              onClick={() => setIsAddMealModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white border border-slate-700 font-bold text-xs transition hover:scale-105"
+            >
+              <Plus className="w-4 h-4 text-emerald-400" />
+              <span>افزودن وعده با جستجو</span>
             </button>
 
             {completedMealsCount < dietMeals.length && (
@@ -193,7 +203,7 @@ export const DietSection = () => {
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 text-xs font-bold transition"
               >
                 <CheckCheck className="w-4 h-4" />
-                <span>تیک زدن همه وعده‌ها</span>
+                <span>تیک همه</span>
               </button>
             )}
           </div>
