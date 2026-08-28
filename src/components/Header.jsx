@@ -15,7 +15,8 @@ import {
   Bot,
   Settings,
   Zap,
-  Wrench
+  Wrench,
+  History
 } from 'lucide-react';
 import { useTracker } from '../context/TrackerContext';
 import { getPersianDateFormatted, toPersianDigits } from '../utils/jalali';
@@ -47,6 +48,7 @@ export const Header = () => {
   const navItems = [
     { id: 'workout', label: 'برنامه تمرینات', icon: Dumbbell, badge: todayWorkoutCount > 0 ? `${toPersianDigits(todayWorkoutCount)} ست` : null },
     { id: 'diet', label: 'رژیم و مکمل‌ها', icon: Utensils, badge: todayMealCount > 0 ? `${toPersianDigits(todayMealCount)}` : null },
+    { id: 'history', label: 'سابقه و رکوردها', icon: History },
     { id: 'schedule', label: 'ساختار هفتگی', icon: CalendarDays },
     { id: 'builder', label: 'بانک حرکات و غذاها', icon: Wrench },
     { id: 'ergo', label: 'ارگونومی ۳۰/۲', icon: HeartPulse },
@@ -73,7 +75,7 @@ export const Header = () => {
                     پلتفرم هوشمند تناسب اندام
                   </h1>
                   <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950">
-                    V7.0 PRO
+                    V9.0 PRO
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">

@@ -20,6 +20,7 @@ import { RestTimerFloat } from './components/RestTimerFloat';
 import { StickySessionBar } from './components/StickySessionBar';
 import { AIFoodScannerModal } from './components/AIFoodScannerModal';
 import { WorkoutSummaryCardModal } from './components/WorkoutSummaryCardModal';
+import { WorkoutHistorySection } from './components/WorkoutHistorySection';
 
 const MainContent = () => {
   const { activeTab } = useTracker();
@@ -28,6 +29,7 @@ const MainContent = () => {
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28">
       {activeTab === 'workout' && <WorkoutSection />}
       {activeTab === 'diet' && <DietSection />}
+      {activeTab === 'history' && <WorkoutHistorySection />}
       {activeTab === 'schedule' && <WeeklyScheduleSection />}
       {activeTab === 'builder' && <ProgramBuilder />}
       {activeTab === 'ergo' && <ErgonomicsSection />}

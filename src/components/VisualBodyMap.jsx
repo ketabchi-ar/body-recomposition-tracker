@@ -1,417 +1,261 @@
 import React, { useState } from 'react';
-import { User, Check, Dumbbell, Sparkles } from 'lucide-react';
+import { User, Sparkles, Layers, CheckCircle2, RotateCw } from 'lucide-react';
+import { useTracker } from '../context/TrackerContext';
 
-export const VisualBodyMap = ({ selectedMuscle, onSelectMuscle, selectedEquipment, onSelectEquipment }) => {
-  const [viewAngle, setViewAngle] = useState('front'); // 'front' | 'back'
-  const [gender, setGender] = useState('male'); // 'male' | 'female'
+export const VisualBodyMap = ({ selectedMuscle, onSelectMuscle }) => {
+  const { profile } = useTracker();
+  const [view, setView] = useState('front'); // 'front' | 'back'
+  const isFemale = profile.gender === 'female' || profile.gender === 'خانم';
 
   const muscleList = [
+    { id: 'all', name: 'کل بدن (نمایش همه)' },
     { id: 'chest', name: 'سینه (Chest)', view: 'front' },
     { id: 'shoulders', name: 'سرشانه و دلتوئید (Shoulders)', view: 'both' },
-    { id: 'back', name: 'پشت و زیربغل (Lats & Back)', view: 'back' },
-    { id: 'arms', name: 'جلو و پشت بازو (Arms)', view: 'both' },
-    { id: 'core', name: 'شکم و پهلو (Abs & Core)', view: 'front' },
+    { id: 'back', name: 'زیربغل و عضلات پشت (Back & Lats)', view: 'back' },
+    { id: 'arms', name: 'جلو بازو و پشت بازو (Arms)', view: 'both' },
+    { id: 'core', name: 'شکم، پهلو و ستون فقرات (Core)', view: 'front' },
     { id: 'legs', name: 'چهارسر، باسن و همسترینگ (Legs & Glutes)', view: 'both' },
     { id: 'cardio', name: 'هوازی و کالیستنیکس (Cardio & Bodyweight)', view: 'both' }
   ];
 
-  const equipmentList = [
-    { id: 'all', name: 'همه تجهیزات' },
-    { id: 'dumbbell', name: 'دمبل (Dumbbell)' },
-    { id: 'barbell', name: 'هالتر (Barbell)' },
-    { id: 'cable', name: 'سیم‌کش (Cable)' },
-    { id: 'machine', name: 'دستگاه (Machine)' },
-    { id: 'bodyweight', name: 'وزن بدن / کالیستنیکس' },
-    { id: 'band', name: 'کش تمرینی (Bands)' },
-    { id: 'home', name: 'تمرین در خانه' }
-  ];
+  const getMuscleColor = (muscleId) => {
+    if (selectedMuscle === 'all') return 'fill-slate-800/80 stroke-slate-700 hover:fill-emerald-500/50 hover:stroke-emerald-400';
+    if (selectedMuscle === muscleId) return 'fill-emerald-500/85 stroke-emerald-300 drop-shadow-[0_0_12px_rgba(16,185,129,0.8)]';
+    return 'fill-slate-850/90 stroke-slate-700/80 opacity-60 hover:opacity-100 hover:fill-emerald-500/40 hover:stroke-emerald-400';
+  };
 
   return (
-    <div className="p-4 sm:p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
-      {/* Top Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <User className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm sm:text-base font-black text-white">
-              نقشه آناتومی عضلات بدن (MuscleWiki Visual Map)
-            </h3>
-            <p className="text-[11px] text-slate-400">
-              تفکیک گرافیکی آناتومی خانم‌ها و آقایان و فیلتر تجهیزات
-            </p>
-          </div>
+    <div className="p-4 sm:p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+      {/* Header & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+        <div className="flex items-center gap-2 text-white">
+          <Layers className="w-5 h-5 text-emerald-400" />
+          <h3 className="text-sm sm:text-base font-black">
+            نقشه تعاملی آناتومی بدن (MuscleWiki Visual Map)
+          </h3>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+            {isFemale ? 'آناتومی بانوان' : 'آناتومی آقایان'}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Angle Switch */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-            <button
-              onClick={() => setViewAngle('front')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                viewAngle === 'front' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              نمای روبرو (Front)
-            </button>
-            <button
-              onClick={() => setViewAngle('back')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                viewAngle === 'back' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              نمای پشت (Back)
-            </button>
-          </div>
-
-          {/* Gender Switch */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-            <button
-              onClick={() => setGender('male')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                gender === 'male' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              آناتومی آقا (Male)
-            </button>
-            <button
-              onClick={() => setGender('female')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                gender === 'female' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              آناتومی خانم (Female)
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Equipment Filter Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs">
-        <span className="text-slate-400 font-bold ml-1 flex-shrink-0 flex items-center gap-1">
-          <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />
-          <span>فیلتر تجهیزات:</span>
-        </span>
-        {equipmentList.map(eq => (
+        {/* View Switcher: Front / Back */}
+        <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-2xl border border-slate-800 self-start sm:self-auto">
           <button
-            key={eq.id}
-            onClick={() => onSelectEquipment && onSelectEquipment(eq.id)}
-            className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition ${
-              selectedEquipment === eq.id
-                ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+            onClick={() => setView('front')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
+              view === 'front' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
             }`}
           >
-            {eq.name}
+            نمای جلو (Front)
           </button>
-        ))}
+          <button
+            onClick={() => setView('back')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
+              view === 'back' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            نمای پشت (Back)
+          </button>
+        </div>
       </div>
 
-      {/* Main Anatomy Viewer Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center pt-2">
+      {/* Main Map Container */}
+      <div className="flex flex-col lg:flex-row items-center justify-around gap-6 py-2">
         
-        {/* SVG Interactive Anatomical Body */}
-        <div className="md:col-span-6 flex flex-col items-center justify-center p-5 rounded-3xl bg-slate-950/80 border border-slate-850 relative min-h-[380px]">
-          <span className="absolute top-3 right-3 text-[10px] font-bold text-slate-500">
-            {gender === 'male' ? 'آناتومی مردانه (هیکل V شکل و عضلانی)' : 'آناتومی زنانه (هیکل ساعت‌شنی و کشیده)'}
-          </span>
+        {/* SVG Interactive MuscleWiki Body Silhouette */}
+        <div className="relative w-64 sm:w-72 h-[340px] flex items-center justify-center bg-slate-950/70 rounded-3xl border border-slate-800 p-2 shadow-inner">
+          <svg viewBox="0 0 200 320" className="w-full h-full cursor-pointer transition-all duration-300 filter">
+            
+            {/* Head & Neck */}
+            <circle cx="100" cy="25" r="16" className="fill-slate-800 stroke-slate-700" strokeWidth="1.5" />
+            <path d="M92 40 L108 40 L112 52 L88 52 Z" className="fill-slate-800 stroke-slate-700" strokeWidth="1.5" />
 
-          <svg viewBox="0 0 200 370" className="w-56 sm:w-64 h-auto drop-shadow-2xl select-none">
-            {/* MALE FRONT */}
-            {gender === 'male' && viewAngle === 'front' && (
-              <g>
-                {/* Head & Traps */}
-                <circle cx="100" cy="32" r="18" fill="#1e293b" stroke="#334155" strokeWidth="2" />
-                <path d="M 80 50 L 100 58 L 120 50 L 138 68 L 62 68 Z" fill="#334155" />
-                
-                {/* Broad Shoulders Left & Right */}
+            {/* FRONT VIEW */}
+            {view === 'front' && (
+              <g className="transition-all duration-300">
+                {/* Shoulders / Deltoids */}
                 <path
-                  d="M 58 68 C 42 70, 36 88, 38 102 C 40 112, 50 114, 58 114 C 64 98, 66 84, 72 68 Z"
-                  fill={selectedMuscle === 'shoulders' ? '#f59e0b' : '#334155'}
-                  className="cursor-pointer transition-all hover:opacity-80"
+                  d="M62 55 Q72 50 85 52 L82 72 Q64 74 60 62 Z"
                   onClick={() => onSelectMuscle('shoulders')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('shoulders')}`}
+                  strokeWidth="1.5"
                 >
-                  <title>سرشانه چپ (دلتوئید قدامی و جانبی)</title>
+                  <title>سرشانه چپ (Left Deltoid)</title>
                 </path>
                 <path
-                  d="M 142 68 C 158 70, 164 88, 162 102 C 160 112, 150 114, 142 114 C 136 98, 134 84, 128 68 Z"
-                  fill={selectedMuscle === 'shoulders' ? '#f59e0b' : '#334155'}
-                  className="cursor-pointer transition-all hover:opacity-80"
+                  d="M138 55 Q128 50 115 52 L118 72 Q136 74 140 62 Z"
                   onClick={() => onSelectMuscle('shoulders')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('shoulders')}`}
+                  strokeWidth="1.5"
                 >
-                  <title>سرشانه راست (دلتوئید قدامی و جانبی)</title>
+                  <title>سرشانه راست (Right Deltoid)</title>
                 </path>
 
-                {/* Male Heavy Chest */}
+                {/* Chest (Pectoralis) */}
                 <path
-                  d="M 72 68 C 84 66, 96 68, 100 72 C 104 68, 116 66, 128 68 C 134 94, 124 116, 100 118 C 76 116, 66 94, 72 68 Z"
-                  fill={selectedMuscle === 'chest' ? '#10b981' : '#1e293b'}
-                  stroke={selectedMuscle === 'chest' ? '#34d399' : '#475569'}
-                  strokeWidth="2"
-                  className="cursor-pointer transition-all hover:fill-emerald-500/50"
+                  d={isFemale 
+                    ? "M84 54 Q100 56 116 54 Q122 75 116 88 Q100 92 84 88 Q78 75 84 54 Z"
+                    : "M84 54 Q100 56 116 54 L120 78 Q100 86 80 78 Z"}
                   onClick={() => onSelectMuscle('chest')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('chest')}`}
+                  strokeWidth="1.5"
                 >
-                  <title>عضلات سینه (Pectorals)</title>
+                  <title>عضلات سینه (Chest / Pectorals)</title>
                 </path>
 
-                {/* Male Arms (Biceps) */}
-                <ellipse cx="44" cy="130" rx="12" ry="20" fill={selectedMuscle === 'arms' ? '#6366f1' : '#334155'} className="cursor-pointer hover:fill-indigo-400" onClick={() => onSelectMuscle('arms')} />
-                <ellipse cx="156" cy="130" rx="12" ry="20" fill={selectedMuscle === 'arms' ? '#6366f1' : '#334155'} className="cursor-pointer hover:fill-indigo-400" onClick={() => onSelectMuscle('arms')} />
+                {/* Biceps & Arms */}
+                <path
+                  d="M58 66 L78 74 L72 108 L52 98 Z"
+                  onClick={() => onSelectMuscle('arms')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('arms')}`}
+                  strokeWidth="1.5"
+                >
+                  <title>جلو بازو چپ (Left Bicep)</title>
+                </path>
+                <path
+                  d="M142 66 L122 74 L128 108 L148 98 Z"
+                  onClick={() => onSelectMuscle('arms')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('arms')}`}
+                  strokeWidth="1.5"
+                >
+                  <title>جلو بازو راست (Right Bicep)</title>
+                </path>
 
                 {/* Forearms */}
-                <path d="M 34 152 C 32 175, 36 195, 42 205 L 52 203 C 50 185, 52 165, 52 152 Z" fill="#1e293b" stroke="#334155" />
-                <path d="M 166 152 C 168 175, 164 195, 158 205 L 148 203 C 150 185, 148 165, 148 152 Z" fill="#1e293b" stroke="#334155" />
+                <path d="M50 102 L70 112 L64 145 L46 138 Z" onClick={() => onSelectMuscle('arms')} className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('arms')}`} strokeWidth="1.5" />
+                <path d="M150 102 L130 112 L136 145 L154 138 Z" onClick={() => onSelectMuscle('arms')} className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('arms')}`} strokeWidth="1.5" />
 
-                {/* Male 6-Pack Abs & Tapered Waist */}
+                {/* Core / Abdominals & Obliques */}
                 <path
-                  d="M 76 122 C 86 120, 114 120, 124 122 C 126 155, 122 178, 100 185 C 78 178, 74 155, 76 122 Z"
-                  fill={selectedMuscle === 'core' ? '#10b981' : '#1e293b'}
-                  stroke={selectedMuscle === 'core' ? '#34d399' : '#475569'}
-                  strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-emerald-500/50"
+                  d={isFemale 
+                    ? "M84 90 Q100 93 116 90 Q112 118 118 140 Q100 144 82 140 Q88 118 84 90 Z"
+                    : "M82 82 Q100 85 118 82 L114 138 Q100 144 86 138 Z"}
                   onClick={() => onSelectMuscle('core')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('core')}`}
+                  strokeWidth="1.5"
                 >
-                  <title>عضلات ۶ تکه شکم و کور</title>
+                  <title>عضلات شکم و پهلو (Abdominals & Core)</title>
                 </path>
 
-                {/* Male Massive Quads */}
+                {/* Quads / Front Thighs */}
                 <path
-                  d="M 70 190 C 60 225, 64 262, 74 275 C 86 275, 96 250, 98 194 Z"
-                  fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'}
-                  stroke={selectedMuscle === 'legs' ? '#22d3ee' : '#475569'}
-                  strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-cyan-500/50"
+                  d={isFemale
+                    ? "M76 145 Q88 148 98 148 L96 220 Q70 216 68 152 Z"
+                    : "M78 142 Q88 146 98 146 L95 220 Q75 218 72 148 Z"}
                   onClick={() => onSelectMuscle('legs')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`}
+                  strokeWidth="1.5"
                 >
-                  <title>چهارسر ران چپ</title>
+                  <title>چهارسر ران چپ (Left Quadriceps)</title>
                 </path>
                 <path
-                  d="M 130 190 C 140 225, 136 262, 126 275 C 114 275, 104 250, 102 194 Z"
-                  fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'}
-                  stroke={selectedMuscle === 'legs' ? '#22d3ee' : '#475569'}
-                  strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-cyan-500/50"
+                  d={isFemale
+                    ? "M124 145 Q112 148 102 148 L104 220 Q130 216 132 152 Z"
+                    : "M122 142 Q112 146 102 146 L105 220 Q125 218 128 148 Z"}
                   onClick={() => onSelectMuscle('legs')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`}
+                  strokeWidth="1.5"
                 >
-                  <title>چهارسر ران راست</title>
+                  <title>چهارسر ران راست (Right Quadriceps)</title>
                 </path>
 
-                {/* Knees & Calves */}
-                <circle cx="74" cy="282" r="6" fill="#334155" />
-                <circle cx="126" cy="282" r="6" fill="#334155" />
-                <path d="M 66 292 C 60 320, 64 348, 72 356 L 80 356 C 78 335, 80 310, 78 292 Z" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" onClick={() => onSelectMuscle('legs')} className="cursor-pointer" />
-                <path d="M 134 292 C 140 320, 136 348, 128 356 L 120 356 C 122 335, 120 310, 122 292 Z" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" onClick={() => onSelectMuscle('legs')} className="cursor-pointer" />
+                {/* Calves (Front Tibialis) */}
+                <path d="M72 228 L92 230 L88 290 L74 286 Z" onClick={() => onSelectMuscle('legs')} className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`} strokeWidth="1.5" />
+                <path d="M128 228 L108 230 L112 290 L126 286 Z" onClick={() => onSelectMuscle('legs')} className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`} strokeWidth="1.5" />
               </g>
             )}
 
-            {/* FEMALE FRONT */}
-            {gender === 'female' && viewAngle === 'front' && (
-              <g>
-                {/* Slender Head & Neck */}
-                <circle cx="100" cy="32" r="15" fill="#1e293b" stroke="#f43f5e" strokeWidth="1.5" />
-                <rect x="95" y="47" width="10" height="15" rx="3" fill="#334155" />
-
-                {/* Sleek Deltoids */}
+            {/* BACK VIEW */}
+            {view === 'back' && (
+              <g className="transition-all duration-300">
+                {/* Upper Traps & Back Lats */}
                 <path
-                  d="M 68 62 C 54 64, 48 76, 50 88 C 52 96, 60 98, 66 98 C 70 86, 72 74, 76 62 Z"
-                  fill={selectedMuscle === 'shoulders' ? '#f59e0b' : '#334155'}
-                  className="cursor-pointer transition-all hover:opacity-80"
-                  onClick={() => onSelectMuscle('shoulders')}
-                >
-                  <title>سرشانه خانم (دلتوئید)</title>
-                </path>
-                <path
-                  d="M 132 62 C 146 64, 152 76, 150 88 C 148 96, 140 98, 134 98 C 130 86, 128 74, 124 62 Z"
-                  fill={selectedMuscle === 'shoulders' ? '#f59e0b' : '#334155'}
-                  className="cursor-pointer transition-all hover:opacity-80"
-                  onClick={() => onSelectMuscle('shoulders')}
-                >
-                  <title>سرشانه خانم (دلتوئید)</title>
-                </path>
-
-                {/* Female Curved Chest */}
-                <path
-                  d="M 76 62 C 86 60, 96 62, 100 66 C 104 62, 114 60, 124 62 C 128 85, 118 105, 100 106 C 82 105, 72 85, 76 62 Z"
-                  fill={selectedMuscle === 'chest' ? '#10b981' : '#1e293b'}
-                  stroke={selectedMuscle === 'chest' ? '#34d399' : '#f43f5e'}
+                  d="M80 50 Q100 58 120 50 L128 88 Q100 94 72 88 Z"
+                  onClick={() => onSelectMuscle('back')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('back')}`}
                   strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-emerald-500/50"
-                  onClick={() => onSelectMuscle('chest')}
                 >
-                  <title>عضلات سینه بانوان</title>
+                  <title>عضلات پشت و کول (Traps & Upper Back)</title>
                 </path>
 
-                {/* Female Toned Arms */}
-                <ellipse cx="54" cy="116" rx="8" ry="16" fill={selectedMuscle === 'arms' ? '#6366f1' : '#334155'} className="cursor-pointer hover:fill-indigo-400" onClick={() => onSelectMuscle('arms')} />
-                <ellipse cx="146" cy="116" rx="8" ry="16" fill={selectedMuscle === 'arms' ? '#6366f1' : '#334155'} className="cursor-pointer hover:fill-indigo-400" onClick={() => onSelectMuscle('arms')} />
-
-                {/* Hourglass Slim Waist & Flat Abs */}
+                {/* Lats (Latissimus Dorsi) */}
                 <path
-                  d="M 82 108 C 88 106, 112 106, 118 108 C 114 135, 108 152, 100 156 C 92 152, 86 135, 82 108 Z"
-                  fill={selectedMuscle === 'core' ? '#10b981' : '#1e293b'}
-                  stroke={selectedMuscle === 'core' ? '#34d399' : '#f43f5e'}
+                  d="M72 88 Q100 94 128 88 L120 135 Q100 142 80 135 Z"
+                  onClick={() => onSelectMuscle('back')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('back')}`}
                   strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-emerald-500/50"
-                  onClick={() => onSelectMuscle('core')}
                 >
-                  <title>عضلات شکم و میان‌تنه باریک</title>
+                  <title>زیربغل و پشتی بزرگ (Lats / Latissimus)</title>
                 </path>
 
-                {/* Female Wider Curved Hips & Sculpted Legs */}
+                {/* Triceps (Back Arms) */}
+                <path d="M58 64 L76 72 L70 108 L52 98 Z" onClick={() => onSelectMuscle('arms')} className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('arms')}`} strokeWidth="1.5" />
+                <path d="M142 64 L124 72 L130 108 L148 98 Z" onClick={() => onSelectMuscle('arms')} className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('arms')}`} strokeWidth="1.5" />
+
+                {/* Glutes (سرینی و باسن) */}
                 <path
-                  d="M 72 160 C 58 198, 62 245, 74 262 C 84 262, 94 235, 96 166 Z"
-                  fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'}
-                  stroke={selectedMuscle === 'legs' ? '#22d3ee' : '#475569'}
-                  strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-cyan-500/50"
+                  d={isFemale
+                    ? "M72 138 Q100 144 128 138 Q136 172 100 176 Q64 172 72 138 Z"
+                    : "M76 136 Q100 140 124 136 Q130 166 100 170 Q70 166 76 136 Z"}
                   onClick={() => onSelectMuscle('legs')}
-                >
-                  <title>ران و لگن چپ</title>
-                </path>
-                <path
-                  d="M 128 160 C 142 198, 138 245, 126 262 C 116 262, 106 235, 104 166 Z"
-                  fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'}
-                  stroke={selectedMuscle === 'legs' ? '#22d3ee' : '#475569'}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`}
                   strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-cyan-500/50"
+                >
+                  <title>عضلات سرینی و باسن (Gluteus Maximus)</title>
+                </path>
+
+                {/* Hamstrings (پشت پا) */}
+                <path
+                  d="M74 178 Q88 180 98 180 L94 228 Q74 226 72 180 Z"
                   onClick={() => onSelectMuscle('legs')}
-                >
-                  <title>ران و لگن راست</title>
-                </path>
-
-                {/* Slender Calves */}
-                <ellipse cx="75" cy="300" rx="9" ry="24" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-                <ellipse cx="125" cy="300" rx="9" ry="24" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-              </g>
-            )}
-
-            {/* MALE BACK */}
-            {gender === 'male' && viewAngle === 'back' && (
-              <g>
-                {/* Traps & V-Back */}
-                <path
-                  d="M 80 50 L 100 62 L 120 50 L 145 74 L 100 120 L 55 74 Z"
-                  fill={selectedMuscle === 'back' || selectedMuscle === 'shoulders' ? '#06b6d4' : '#334155'}
-                  stroke="#475569"
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`}
                   strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-cyan-400"
-                  onClick={() => onSelectMuscle('back')}
                 >
-                  <title>کول و عضلات ذوزنقه‌ای مردانه</title>
-                </path>
-
-                {/* Wide Lats */}
-                <path
-                  d="M 55 76 C 40 96, 46 142, 74 162 L 100 125 Z"
-                  fill={selectedMuscle === 'back' ? '#10b981' : '#1e293b'}
-                  stroke="#34d399"
-                  strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-emerald-500"
-                  onClick={() => onSelectMuscle('back')}
-                >
-                  <title>زیربغل چپ</title>
+                  <title>همسترینگ چپ (Left Hamstrings)</title>
                 </path>
                 <path
-                  d="M 145 76 C 160 96, 154 142, 126 162 L 100 125 Z"
-                  fill={selectedMuscle === 'back' ? '#10b981' : '#1e293b'}
-                  stroke="#34d399"
+                  d="M126 178 Q112 180 102 180 L106 228 Q126 226 128 180 Z"
+                  onClick={() => onSelectMuscle('legs')}
+                  className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`}
                   strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-emerald-500"
-                  onClick={() => onSelectMuscle('back')}
                 >
-                  <title>زیربغل راست</title>
+                  <title>همسترینگ راست (Right Hamstrings)</title>
                 </path>
 
-                {/* Triceps */}
-                <ellipse cx="44" cy="130" rx="12" ry="20" fill={selectedMuscle === 'arms' ? '#6366f1' : '#334155'} className="cursor-pointer hover:fill-indigo-400" onClick={() => onSelectMuscle('arms')} />
-                <ellipse cx="156" cy="130" rx="12" ry="20" fill={selectedMuscle === 'arms' ? '#6366f1' : '#334155'} className="cursor-pointer hover:fill-indigo-400" onClick={() => onSelectMuscle('arms')} />
-
-                {/* Male Glutes */}
-                <ellipse cx="80" cy="202" rx="19" ry="20" fill={selectedMuscle === 'legs' ? '#f59e0b' : '#1e293b'} stroke="#f59e0b" strokeWidth="1.5" className="cursor-pointer hover:fill-amber-400" onClick={() => onSelectMuscle('legs')} />
-                <ellipse cx="120" cy="202" rx="19" ry="20" fill={selectedMuscle === 'legs' ? '#f59e0b' : '#1e293b'} stroke="#f59e0b" strokeWidth="1.5" className="cursor-pointer hover:fill-amber-400" onClick={() => onSelectMuscle('legs')} />
-
-                {/* Hamstrings & Calves */}
-                <path d="M 66 226 C 62 248, 66 270, 74 278 C 84 276, 92 258, 94 226 Z" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-                <path d="M 134 226 C 138 248, 134 270, 126 278 C 116 276, 108 258, 106 226 Z" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-                <ellipse cx="74" cy="318" rx="12" ry="24" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-                <ellipse cx="126" cy="318" rx="12" ry="24" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-              </g>
-            )}
-
-            {/* FEMALE BACK */}
-            {gender === 'female' && viewAngle === 'back' && (
-              <g>
-                {/* Slender Upper Back */}
-                <path
-                  d="M 84 55 L 100 65 L 116 55 L 136 72 L 100 110 L 64 72 Z"
-                  fill={selectedMuscle === 'back' || selectedMuscle === 'shoulders' ? '#06b6d4' : '#334155'}
-                  stroke="#475569"
-                  strokeWidth="1.5"
-                  className="cursor-pointer transition-all hover:fill-cyan-400"
-                  onClick={() => onSelectMuscle('back')}
-                >
-                  <title>بالای پشت و کول بانوان</title>
-                </path>
-
-                {/* Toned Triceps */}
-                <ellipse cx="54" cy="116" rx="8" ry="16" fill={selectedMuscle === 'arms' ? '#6366f1' : '#334155'} className="cursor-pointer hover:fill-indigo-400" onClick={() => onSelectMuscle('arms')} />
-                <ellipse cx="146" cy="116" rx="8" ry="16" fill={selectedMuscle === 'arms' ? '#6366f1' : '#334155'} className="cursor-pointer hover:fill-indigo-400" onClick={() => onSelectMuscle('arms')} />
-
-                {/* Female Pronounced Glutes (عضلات سرینی برجسته بانوان) */}
-                <ellipse cx="78" cy="190" rx="22" ry="24" fill={selectedMuscle === 'legs' ? '#f59e0b' : '#1e293b'} stroke="#f59e0b" strokeWidth="2" className="cursor-pointer hover:fill-amber-400" onClick={() => onSelectMuscle('legs')}>
-                  <title>عضله باسن چپ بانوان (Glutes)</title>
-                </ellipse>
-                <ellipse cx="122" cy="190" rx="22" ry="24" fill={selectedMuscle === 'legs' ? '#f59e0b' : '#1e293b'} stroke="#f59e0b" strokeWidth="2" className="cursor-pointer hover:fill-amber-400" onClick={() => onSelectMuscle('legs')}>
-                  <title>عضله باسن راست بانوان (Glutes)</title>
-                </ellipse>
-
-                {/* Slender Hamstrings & Calves */}
-                <path d="M 68 218 C 65 240, 68 260, 76 268 C 86 266, 92 248, 94 218 Z" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-                <path d="M 132 218 C 135 240, 132 260, 124 268 C 114 266, 108 248, 106 218 Z" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-                <ellipse cx="75" cy="305" rx="10" ry="22" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
-                <ellipse cx="125" cy="305" rx="10" ry="22" fill={selectedMuscle === 'legs' ? '#06b6d4' : '#1e293b'} stroke="#475569" className="cursor-pointer hover:fill-cyan-400" onClick={() => onSelectMuscle('legs')} />
+                {/* Calves Back (Gastrocnemius) */}
+                <path d="M70 234 Q88 236 94 236 L90 292 L72 288 Z" onClick={() => onSelectMuscle('legs')} className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`} strokeWidth="1.5" />
+                <path d="M130 234 Q112 236 106 236 L110 292 L128 288 Z" onClick={() => onSelectMuscle('legs')} className={`transition-colors duration-200 cursor-pointer ${getMuscleColor('legs')}`} strokeWidth="1.5" />
               </g>
             )}
           </svg>
         </div>
 
-        {/* Quick Muscle Selector Pills */}
-        <div className="md:col-span-6 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-300">گروه‌های عضلانی هدف:</span>
-            <button
-              onClick={() => onSelectMuscle('all')}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
-                selectedMuscle === 'all'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              نمایش همه عضلات
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            {muscleList.map(m => {
+        {/* Muscle Selector Chips List */}
+        <div className="flex-1 space-y-2 max-w-md">
+          <span className="text-xs text-slate-400 font-bold block mb-1">
+            انتخاب سریع عضله برای فیلتر حرکات:
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {muscleList.map((m) => {
               const isSelected = selectedMuscle === m.id;
               return (
                 <button
                   key={m.id}
                   onClick={() => onSelectMuscle(m.id)}
-                  className={`p-3 rounded-2xl border text-right transition flex items-center justify-between ${
+                  className={`p-2.5 rounded-2xl border text-right text-xs font-bold transition flex items-center justify-between ${
                     isSelected
-                      ? 'bg-emerald-950/40 border-emerald-500 text-white font-bold shadow-md'
-                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-500/10'
+                      : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
                   }`}
                 >
                   <span>{m.name}</span>
-                  {isSelected && <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />}
+                  {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
                 </button>
               );
             })}
           </div>
         </div>
+
       </div>
     </div>
   );
