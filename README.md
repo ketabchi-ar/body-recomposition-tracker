@@ -1,5 +1,9 @@
 # 🏋️‍♂️ Body Recomposition & Fitness Tracker | ترکر هوشمند بدنسازی و تغذیه
 
+
+[![DevSponsors](https://img.shields.io/badge/DevSponsors-Verified_OSS-6366f1?style=for-the-badge&logo=github)](https://devsponsors.github.io)
+[![Sponsor](https://img.shields.io/badge/Sponsor-DevSponsors_Hub-emerald?style=for-the-badge&logo=github-sponsors)](https://devsponsors.github.io)
+
 اپلیکیشن مدرن، واکنش‌گرا و تک‌صفحه‌ای (SPA / PWA) برای ردیابی تخصصی برنامه تمرینات، رژیم غذایی، مکمل‌ها و ارگونومی.
 
 ---
